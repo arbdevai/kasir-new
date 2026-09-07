@@ -443,7 +443,7 @@ class _AppShellState extends State<AppShell> {
                     ),
                   ),
                   title: Text(u.name, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
-                  subtitle: Text('${u.roleTitle} • PIN: ${u.pin}'),
+                  subtitle: Text(u.roleTitle),
                   trailing: isCurrent
                       ? const Icon(Icons.check_circle_rounded, color: AppColors.primary)
                       : const Icon(Icons.chevron_right_rounded),

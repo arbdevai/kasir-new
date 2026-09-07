@@ -603,37 +603,54 @@ class _PosScreenState extends State<PosScreen> {
       ),
       builder: (ctx) {
         return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    const Icon(Icons.pause_circle_filled_rounded, color: AppColors.warning),
-                    const SizedBox(width: 8),
-                    const Text('Daftar Pesanan Tertunda (Hold)', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
-                  ],
-                ),
-                const SizedBox(height: 14),
-                ...holdOrders.map((ho) {
-                  return Card(
-                    margin: const EdgeInsets.only(bottom: 10),
-                    child: ListTile(
-                      title: Text(ho.customerName, style: const TextStyle(fontWeight: FontWeight.w700)),
-                      subtitle: Text('${ho.invoiceNumber} • ${ho.items.length} item • ${ho.tableNumber}'),
-                      trailing: ElevatedButton(
-                        onPressed: () {
-                          widget.state.recallHoldOrder(ho);
-                          Navigator.pop(ctx);
-                        },
-                        child: const Text('Lanjutkan'),
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(ctx).size.height * 0.72,
+            ),
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.pause_circle_filled_rounded, color: AppColors.warning),
+                      const SizedBox(width: 8),
+                      const Expanded(
+                        child: Text(
+                          'Daftar Pesanan Tertunda (Hold)',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+                        ),
                       ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  Expanded(
+                    child: ListView.builder(
+                      itemCount: holdOrders.length,
+                      itemBuilder: (context, index) {
+                        final ho = holdOrders[index];
+                        return Card(
+                          margin: const EdgeInsets.only(bottom: 10),
+                          child: ListTile(
+                            title: Text(ho.customerName, style: const TextStyle(fontWeight: FontWeight.w700)),
+                            subtitle: Text('${ho.invoiceNumber} • ${ho.items.length} item • ${ho.tableNumber}'),
+                            trailing: ElevatedButton(
+                              onPressed: () {
+                                widget.state.recallHoldOrder(ho);
+                                Navigator.pop(ctx);
+                              },
+                              child: const Text('Lanjutkan'),
+                            ),
+                          ),
+                        );
+                      },
                     ),
-                  );
-                }),
-              ],
+                  ),
+                ],
+              ),
             ),
           ),
         );

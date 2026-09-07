@@ -58,7 +58,6 @@ android {
 
     buildTypes {
         release {
-            signingConfig = signingConfigs.debug
             if (keystoreProperties.containsKey("storeFile")) {
                 signingConfig = signingConfigs.release
             }

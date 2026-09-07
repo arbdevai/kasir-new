@@ -30,7 +30,11 @@ class _ReportsScreenState extends State<ReportsScreen> {
               pinned: true,
               toolbarHeight: 64,
               titleSpacing: 20,
-              title: const Text('Laporan & Keuangan', style: TextStyle(fontSize: 19, fontWeight: FontWeight.w800)),
+              title: const FittedBox(
+                fit: BoxFit.scaleDown,
+                alignment: Alignment.centerLeft,
+                child: Text('Laporan & Keuangan', style: TextStyle(fontSize: 19, fontWeight: FontWeight.w800)),
+              ),
               actions: [
                 IconButton(
                   tooltip: 'Export Laporan',
@@ -88,12 +92,19 @@ class _ReportsScreenState extends State<ReportsScreen> {
                       : null,
                 ),
                 child: Center(
-                  child: Text(
-                    e.value,
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: sel ? FontWeight.w700 : FontWeight.w500,
-                      color: sel ? AppColors.textPrimary : AppColors.textSecondary,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 6),
+                    child: Text(
+                      e.value,
+                      textAlign: TextAlign.center,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      softWrap: false,
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: sel ? FontWeight.w700 : FontWeight.w500,
+                        color: sel ? AppColors.textPrimary : AppColors.textSecondary,
+                      ),
                     ),
                   ),
                 ),
