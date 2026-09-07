@@ -16,7 +16,7 @@ on:
         type: boolean
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: build-apk-${{ github.workflow }}-${{ github.ref }}
@@ -27,6 +27,8 @@ jobs:
     name: Build Debug and Release APK
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    permissions:
+      contents: write
 
     steps:
       - name: Check out source
@@ -135,7 +137,7 @@ jobs:
           files: |
             build-outputs/app-release.apk
             build-outputs/app-debug.apk
-          draft: false
+          draft: true
           prerelease: false
           generate_release_notes: true
         env:
