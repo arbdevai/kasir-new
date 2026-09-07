@@ -374,7 +374,7 @@ class _AppShellState extends State<AppShell> {
           const NavigationDestination(
             icon: Icon(Icons.space_dashboard_outlined, color: AppColors.textSecondary),
             selectedIcon: Icon(Icons.space_dashboard_rounded, color: AppColors.primary),
-            label: 'Home',
+            label: 'Dashboard',
           ),
           NavigationDestination(
             icon: Badge(
@@ -404,7 +404,7 @@ class _AppShellState extends State<AppShell> {
           const NavigationDestination(
             icon: Icon(Icons.settings_outlined, color: AppColors.textSecondary),
             selectedIcon: Icon(Icons.settings_rounded, color: AppColors.primary),
-            label: 'Setting',
+            label: 'Pengaturan',
           ),
         ],
       ),

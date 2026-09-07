@@ -25,36 +25,48 @@ class _PosScreenState extends State<PosScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final bool isTabletLandscape = constraints.maxWidth >= 900;
-        if (isTabletLandscape) {
-          return Row(
-            children: [
-              Expanded(
-                flex: 6,
-                child: _buildCatalogSection(context),
-              ),
-              const VerticalDivider(width: 1, thickness: 1, color: AppColors.border),
-              SizedBox(
-                width: 380,
-                child: _buildCartPanel(context, isEmbedded: true),
-              ),
-            ],
-          );
-        }
+    return ListenableBuilder(
+      listenable: widget.state,
+      builder: (context, _) {
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            final bool isTabletLandscape = constraints.maxWidth >= 900;
+            if (isTabletLandscape) {
+              return Row(
+                children: [
+                  Expanded(
+                    flex: 6,
+                    child: _buildCatalogSection(context),
+                  ),
+                  const VerticalDivider(
+                    width: 1,
+                    thickness: 1,
+                    color: AppColors.border,
+                  ),
+                  SizedBox(
+                    width: 380,
+                    child: _buildCartPanel(context, isEmbedded: true),
+                  ),
+                ],
+              );
+            }
 
-        return Stack(
-          children: [
-            _buildCatalogSection(context, bottomPadding: widget.state.cart.isNotEmpty ? 90 : 20),
-            if (widget.state.cart.isNotEmpty)
-              Positioned(
-                left: 16,
-                right: 16,
-                bottom: 16,
-                child: _buildFloatingCartBar(context),
-              ),
-          ],
+            return Stack(
+              children: [
+                _buildCatalogSection(
+                  context,
+                  bottomPadding: widget.state.cart.isNotEmpty ? 90 : 20,
+                ),
+                if (widget.state.cart.isNotEmpty)
+                  Positioned(
+                    left: 16,
+                    right: 16,
+                    bottom: 16,
+                    child: _buildFloatingCartBar(context),
+                  ),
+              ],
+            );
+          },
         );
       },
     );

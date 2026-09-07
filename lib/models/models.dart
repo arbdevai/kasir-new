@@ -140,7 +140,7 @@ class CartItem {
     this.selectedVariant,
   });
 
-  double get subtotal => (unitPrice * quantity) - discountNominal;
+  double get subtotal => ((unitPrice * quantity) - discountNominal).clamp(0.0, double.infinity);
   double get totalCost => product.costPrice * quantity;
 
   CartItem copyWith({

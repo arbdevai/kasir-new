@@ -555,7 +555,26 @@ class PosState extends ChangeNotifier {
     }).toList();
   }
 
-  void addToCart(Product product, {ProductVariant? variant, String note = ''}) {
+  bool canAddQuantity(Product product, {ProductVariant? variant, String note = '', int requestedQuantity = 1}) {
+    final int onHand = products
+        .firstWhere((p) => p.id == product.id, orElse: () => product)
+        .stock;
+    final int reserved = cart
+        .where(
+          (item) =>
+              item.product.id == product.id &&
+              item.selectedVariant?.id == variant?.id &&
+              item.note == note,
+        )
+        .fold(0, (sum, item) => sum + item.quantity);
+    return onHand >= reserved + requestedQuantity;
+  }
+
+  bool addToCart(Product product, {ProductVariant? variant, String note = ''}) {
+    if (!canAddQuantity(product, variant: variant, note: note)) {
+      return false;
+    }
+
     final double price = product.price + (variant?.additionalPrice ?? 0.0);
     final int existingIndex = cart.indexWhere(
       (item) =>
@@ -579,17 +598,41 @@ class PosState extends ChangeNotifier {
       );
     }
     notifyListeners();
+    return true;
   }
 
-  void updateCartItemQuantity(int index, int newQty) {
+  bool updateCartItemQuantity(int index, int newQty) {
     if (index >= 0 && index < cart.length) {
       if (newQty <= 0) {
         cart.removeAt(index);
-      } else {
-        cart[index].quantity = newQty;
+        notifyListeners();
+        return true;
       }
+
+      final CartItem item = cart[index];
+      final int siblingReserved = cart
+          .asMap()
+          .entries
+          .where(
+            (entry) =>
+                entry.key != index &&
+                entry.value.product.id == item.product.id &&
+                entry.value.selectedVariant?.id == item.selectedVariant?.id &&
+                entry.value.note == item.note,
+          )
+          .fold(0, (sum, entry) => sum + entry.value.quantity);
+      final int onHand = products
+          .firstWhere((p) => p.id == item.product.id, orElse: () => item.product)
+          .stock;
+      if (newQty + siblingReserved > onHand) {
+        return false;
+      }
+
+      cart[index].quantity = newQty;
       notifyListeners();
+      return true;
     }
+    return false;
   }
 
   void removeCartItem(int index) {
@@ -608,17 +651,18 @@ class PosState extends ChangeNotifier {
 
   void setItemDiscount(int index, double discountNominal) {
     if (index >= 0 && index < cart.length) {
-      cart[index].discountNominal = discountNominal;
+      final item = cart[index];
+      item.discountNominal = discountNominal.clamp(0.0, item.unitPrice * item.quantity);
       notifyListeners();
     }
   }
 
   void setOrderDiscount({double? percent, double? nominal}) {
     if (percent != null) {
-      orderDiscountPercent = percent;
+      orderDiscountPercent = percent.clamp(0.0, 100.0);
       orderDiscountNominal = 0.0;
     } else if (nominal != null) {
-      orderDiscountNominal = nominal;
+      orderDiscountNominal = nominal.clamp(0.0, cartSubtotal);
       orderDiscountPercent = 0.0;
     }
     notifyListeners();
@@ -675,6 +719,7 @@ class PosState extends ChangeNotifier {
     activeCustomerName = tx.customerName;
     activeTableNumber = tx.tableNumber;
     activeOrderNote = tx.notes;
+    orderDiscountPercent = 0.0;
     orderDiscountNominal = tx.discount;
 
     // Remove from hold list
@@ -692,7 +737,26 @@ class PosState extends ChangeNotifier {
     String? tableNumber,
     String? note,
   }) {
-    final String inv = 'INV/${DateTime.now().year}${DateTime.now().month.toString().padLeft(2, '0')}${DateTime.now().day.toString().padLeft(2, '0')}/${(transactions.where((t) => t.status == TransactionStatus.completed).length + 1).toString().padLeft(3, '0')}';
+    if (currentShift == null) {
+      throw StateError('Buka shift kasir sebelum checkout');
+    }
+    if (cart.isEmpty) {
+      throw StateError('Keranjang transaksi kosong');
+    }
+    for (final item in cart) {
+      if (!canAddQuantity(item.product, variant: item.selectedVariant, note: item.note, requestedQuantity: item.quantity - cart.where((other) => other.product.id == item.product.id && other.selectedVariant?.id == item.selectedVariant?.id && other.note == item.note).fold(0, (sum, other) => sum + other.quantity) + item.quantity)) {
+        throw StateError('Stok ${item.product.name} tidak mencukupi');
+      }
+    }
+    final String dateKey = '${DateTime.now().year}${DateTime.now().month.toString().padLeft(2, '0')}${DateTime.now().day.toString().padLeft(2, '0')}';
+    final int nextNumber = transactions
+            .map((t) => RegExp(r'^INV/\d{8}/(\d+)$').firstMatch(t.invoiceNumber))
+            .whereType<RegExpMatch>()
+            .map((m) => int.tryParse(m.group(1)!) ?? 0)
+            .fold(0, (max, value) => value > max ? value : max) +
+        1;
+    final String inv = 'INV/$dateKey/${nextNumber.toString().padLeft(3, '0')}';
+
 
     final tx = Transaction(
       id: 'tx_${DateTime.now().millisecondsSinceEpoch}',
@@ -775,6 +839,9 @@ class PosState extends ChangeNotifier {
     final int index = transactions.indexWhere((t) => t.id == transactionId);
     if (index >= 0) {
       final oldTx = transactions[index];
+      if (oldTx.status == TransactionStatus.voided) {
+        return false;
+      }
       transactions[index] = oldTx.copyWith(
         status: TransactionStatus.voided,
         notes: '${oldTx.notes} [VOID: $reason by PIN Auth]',
@@ -807,20 +874,38 @@ class PosState extends ChangeNotifier {
         }
       }
 
+      // Reconcile shift totals
+      if (currentShift != null) {
+        if (oldTx.paymentMethod == PaymentMethod.cash) {
+          currentShift!.cashSales = (currentShift!.cashSales - oldTx.total).clamp(0.0, double.infinity);
+        } else if (oldTx.paymentMethod != PaymentMethod.debt) {
+          currentShift!.nonCashSales = (currentShift!.nonCashSales - oldTx.total).clamp(0.0, double.infinity);
+        }
+      }
+
       notifyListeners();
       return true;
     }
     return false;
   }
 
-  void settleDebt(String transactionId) {
+  void settleDebt(String transactionId, {PaymentMethod method = PaymentMethod.cash}) {
     final int index = transactions.indexWhere((t) => t.id == transactionId);
     if (index >= 0) {
       final oldTx = transactions[index];
+      if (oldTx.status != TransactionStatus.debt) return;
       transactions[index] = oldTx.copyWith(
         status: TransactionStatus.completed,
-        notes: '${oldTx.notes} (Lunas: ${DateTime.now()})',
+        paymentMethod: method,
+        notes: '${oldTx.notes} (Lunas via ${method.name.toUpperCase()}: ${DateTime.now()})',
       );
+      if (currentShift != null) {
+        if (method == PaymentMethod.cash) {
+          currentShift!.cashSales += oldTx.total;
+        } else {
+          currentShift!.nonCashSales += oldTx.total;
+        }
+      }
       notifyListeners();
     }
   }
@@ -893,6 +978,7 @@ class PosState extends ChangeNotifier {
 
   // --- Shift Management ---
   void startNewShift(double startingCash) {
+    if (currentShift != null || startingCash < 0) return;
     currentShift = Shift(
       id: 'sh_${DateTime.now().millisecondsSinceEpoch}',
       cashierName: currentUser.name,
@@ -903,7 +989,7 @@ class PosState extends ChangeNotifier {
   }
 
   void addShiftCashMovement({required double amount, required bool isCashIn, required String note}) {
-    if (currentShift != null) {
+    if (currentShift != null && amount > 0) {
       if (isCashIn) {
         currentShift!.cashIn += amount;
       } else {
@@ -955,20 +1041,40 @@ class PosState extends ChangeNotifier {
   }
 
   // --- Analytics & Reports Helpers ---
+  bool _isSameCalendarDay(DateTime a, DateTime b) =>
+      a.year == b.year && a.month == b.month && a.day == b.day;
+
   double get totalRevenueToday {
+    final now = DateTime.now();
     return transactions
-        .where((t) => t.status == TransactionStatus.completed)
+        .where(
+          (t) =>
+              t.status == TransactionStatus.completed &&
+              _isSameCalendarDay(t.dateTime, now),
+        )
         .fold(0.0, (sum, t) => sum + t.total);
   }
 
   double get totalGrossProfitToday {
+    final now = DateTime.now();
     return transactions
-        .where((t) => t.status == TransactionStatus.completed)
-        .fold(0.0, (sum, t) => sum + t.totalProfit);
+        .where(
+          (t) =>
+              t.status == TransactionStatus.completed &&
+              _isSameCalendarDay(t.dateTime, now),
+        )
+        .fold(0.0, (sum, t) => sum + (t.total - t.tax - t.serviceCharge - t.totalCost));
   }
 
   int get completedTransactionsCount {
-    return transactions.where((t) => t.status == TransactionStatus.completed).length;
+    final now = DateTime.now();
+    return transactions
+        .where(
+          (t) =>
+              t.status == TransactionStatus.completed &&
+              _isSameCalendarDay(t.dateTime, now),
+        )
+        .length;
   }
 
   double get averageBasketSize {

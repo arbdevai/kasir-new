@@ -92,7 +92,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           },
                         ),
                         const SizedBox(height: 8),
-                        Row(
+                        Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
                           children: [
                             OutlinedButton.icon(
                               onPressed: () {
@@ -103,7 +105,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               icon: const Icon(Icons.print_rounded, size: 16),
                               label: const Text('Test Print'),
                             ),
-                            const SizedBox(width: 8),
                             OutlinedButton.icon(
                               onPressed: () {
                                 ScaffoldMessenger.of(context).showSnackBar(
