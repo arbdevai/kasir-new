@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../models/models.dart';
-import '../state/pos_state.dart';
 import '../theme/app_theme.dart';
 
 class GlassPanel extends StatelessWidget {

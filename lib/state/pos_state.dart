@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+
 import '../models/models.dart';
+import '../theme/app_theme.dart';
 
 class PosState extends ChangeNotifier {
   // Store Profile
