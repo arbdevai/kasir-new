@@ -19,7 +19,11 @@ class _MemoryPrinterConnection implements PrinterConnection {
   PrinterConnectionState get state => _state;
 
   @override
-  Future<List<PrinterDevice>> discover() async => const <PrinterDevice>[];
+  Future<List<PrinterDevice>> discover({
+    List<String>? candidates,
+    Duration probeTimeout = const Duration(milliseconds: 800),
+  }) async =>
+      const <PrinterDevice>[];
 
   @override
   Future<void> connect(PrinterEndpoint endpoint) async {
