@@ -1,7 +1,34 @@
 import 'package:flutter/material.dart';
 
+import '../data/settings_repository.dart';
 import '../models/models.dart';
 import '../theme/app_theme.dart';
+
+// Persistence is intentionally fire-and-forget so existing synchronous state
+// APIs remain compatible with the UI.
+void _ignorePersistenceError(Future<bool> operation) {
+  operation.catchError((_) => false);
+}
+
+PrinterSettings _printerSettingsFromState(PosState state) => PrinterSettings(
+      name: state.selectedPrinterName,
+      paperSize: state.selectedPaperSize,
+      isConnected: state.isPrinterConnected,
+    );
+
+PosState _applyPersistedSettings(PosState state, SettingsRepository repository) {
+  state.settingsRepository = repository;
+  state.storeProfile = repository.loadStoreProfile();
+  final printer = repository.loadPrinterSettings();
+  state.selectedPrinterName = printer.name;
+  state.selectedPaperSize = printer.paperSize;
+  state.isPrinterConnected = printer.isConnected;
+  return state;
+}
+
+PosState createPosState(SettingsRepository repository) {
+  return _applyPersistedSettings(PosState.sample(), repository);
+}
 
 class PosState extends ChangeNotifier {
   // Store Profile
@@ -40,7 +67,10 @@ class PosState extends ChangeNotifier {
   String selectedPaperSize; // '58mm' or '80mm'
   bool isPrinterConnected;
 
+  SettingsRepository? settingsRepository;
+
   PosState({
+    this.settingsRepository,
     required this.storeProfile,
     required this.users,
     required this.currentUser,
@@ -63,8 +93,8 @@ class PosState extends ChangeNotifier {
     this.isPrinterConnected = true,
   });
 
-  factory PosState.sample() {
-    final StoreProfile profile = const StoreProfile();
+  factory PosState.sample({StoreProfile? storeProfile}) {
+    final StoreProfile profile = storeProfile ?? const StoreProfile();
 
     final List<Category> cats = [
       const Category(
@@ -1059,6 +1089,10 @@ class PosState extends ChangeNotifier {
   // --- Settings & Profile ---
   void updateStoreProfile(StoreProfile newProfile) {
     storeProfile = newProfile;
+    final repo = settingsRepository;
+    if (repo != null) {
+      _ignorePersistenceError(repo.saveStoreProfile(newProfile));
+    }
     notifyListeners();
   }
 
@@ -1066,6 +1100,10 @@ class PosState extends ChangeNotifier {
     if (name != null) selectedPrinterName = name;
     if (paperSize != null) selectedPaperSize = paperSize;
     if (isConnected != null) isPrinterConnected = isConnected;
+    final repo = settingsRepository;
+    if (repo != null) {
+      _ignorePersistenceError(repo.savePrinterSettings(_printerSettingsFromState(this)));
+    }
     notifyListeners();
   }
 
