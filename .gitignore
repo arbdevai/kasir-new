@@ -38,6 +38,12 @@ migrate_working_dir/
 **/android/gradlew.bat
 **/android/local.properties
 **/android/**/GeneratedPluginRegistrant.java
+android/key.properties
+android/app/upload-keystore.jks
+*.jks
+*.keystore
+key.properties
+
 
 # iOS/macOS related
 **/ios/**/*.mode1v3
