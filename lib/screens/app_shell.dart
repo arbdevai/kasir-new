@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../models/models.dart';
 import '../state/pos_state.dart';
 import '../theme/app_theme.dart';
+import '../widgets/app_widgets.dart';
 import 'dashboard_screen.dart';
 import 'pos_screen.dart';
 import 'products_screen.dart';
@@ -29,7 +30,7 @@ class _AppShellState extends State<AppShell> {
       DashboardScreen(
         state: widget.state,
         onNavigateToTab: _navigateToTab,
-        onRequestUserSwitch: _showUserSwitchDialog,
+        onRequestUserSwitch: () => _showUserSwitchDialog(context),
       ),
       PosScreen(state: widget.state),
       ProductsScreen(state: widget.state),
