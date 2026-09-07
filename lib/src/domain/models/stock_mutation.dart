@@ -1,4 +1,4 @@
-enum StockMutationType { inbound, outbound, adjustment, sale, return }
+enum StockMutationType { inbound, outbound, adjustment, sale, returned }
 
 class StockMutation {
   const StockMutation({
@@ -44,7 +44,9 @@ class StockMutation {
     return StockMutation(
       id: map['id'] as String,
       productId: map['product_id'] as String,
-      type: StockMutationType.values.byName(map['type'] as String),
+      type: StockMutationType.values.byName(
+        (map['type'] as String) == 'return' ? 'returned' : map['type'] as String,
+      ),
       quantity: (map['quantity'] as num).toDouble(),
       stockBefore: (map['stock_before'] as num).toDouble(),
       stockAfter: (map['stock_after'] as num).toDouble(),

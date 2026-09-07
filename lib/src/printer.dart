@@ -2,6 +2,8 @@ import 'dart:typed_data';
 
 import 'receipt.dart';
 
+export 'receipt.dart';
+
 enum PrinterConnectionType { bluetooth, usb, network }
 
 enum PrinterConnectionState { disconnected, connecting, connected, failed }
@@ -62,7 +64,6 @@ abstract interface class EscPosReceiptFormatter {
   Uint8List format(ReceiptDocument document);
 }
 
-export 'receipt.dart';
 /// Coordinates formatting and optional output to a connection.
 abstract interface class ReceiptPrinter {
   Future<Uint8List> format(ReceiptDocument document);
