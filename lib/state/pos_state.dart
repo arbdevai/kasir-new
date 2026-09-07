@@ -555,6 +555,26 @@ class PosState extends ChangeNotifier {
     }).toList();
   }
 
+  /// Finds a product by an exact barcode (or SKU for keyboard scanners).
+  /// Blank scans and unknown codes never fall back to the first product.
+  Product? findProductByBarcode(String code) {
+    final normalized = code.trim().toLowerCase();
+    if (normalized.isEmpty) return null;
+    for (final product in products) {
+      if (product.barcode.trim().toLowerCase() == normalized ||
+          product.sku.trim().toLowerCase() == normalized) {
+        return product;
+      }
+    }
+    return null;
+  }
+
+  /// Handles a scanner result and reports whether an item was added.
+  bool addScannedBarcode(String code) {
+    final product = findProductByBarcode(code);
+    return product != null && addToCart(product);
+  }
+
   bool canAddQuantity(Product product, {ProductVariant? variant, String note = '', int requestedQuantity = 1}) {
     final int onHand = products
         .firstWhere((p) => p.id == product.id, orElse: () => product)

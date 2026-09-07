@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../models/models.dart';
+import '../src/report_export.dart';
 import '../state/pos_state.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_widgets.dart';
@@ -329,28 +330,31 @@ class _ReportsScreenState extends State<ReportsScreen> {
   }
 
   void _showExportDialog(BuildContext context) {
+    final exporter = const ReportExportService();
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text('Ekspor Laporan Penjualan', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
-        content: const Text('Pilih format laporan yang ingin disimpan atau dibagikan:'),
+        content: Text('Ekspor ${widget.state.transactions.length} transaksi yang saat ini tersimpan.'),
         actions: [
           OutlinedButton.icon(
             onPressed: () {
+              final artifact = exporter.exportCsv(widget.state.transactions);
               Navigator.pop(ctx);
-              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Laporan Excel (.xlsx) berhasil digenerate')));
+              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Laporan CSV ${artifact.fileName} berhasil dibuat (${artifact.bytes.length} byte)')));
             },
             icon: const Icon(Icons.table_chart_rounded),
-            label: const Text('Excel (.xlsx)'),
+            label: const Text('CSV / Excel'),
           ),
           ElevatedButton.icon(
             onPressed: () {
+              final artifact = exporter.exportText(widget.state.transactions);
               Navigator.pop(ctx);
-              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Laporan PDF berhasil digenerate & siap dicetak')));
+              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Laporan teks ${artifact.fileName} berhasil dibuat (${artifact.bytes.length} byte)')));
             },
-            icon: const Icon(Icons.picture_as_pdf_rounded),
-            label: const Text('Dokumen PDF'),
+            icon: const Icon(Icons.description_rounded),
+            label: const Text('Dokumen Teks'),
           ),
         ],
       ),

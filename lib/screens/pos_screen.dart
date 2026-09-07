@@ -861,13 +861,44 @@ class _PosScreenState extends State<PosScreen> {
     );
   }
 
-  void _simulateBarcodeScan(BuildContext context) {
-    final scanned = widget.state.products.first;
-    widget.state.addToCart(scanned);
+  Future<void> _simulateBarcodeScan(BuildContext context) async {
+    final codeController = TextEditingController();
+    final code = await showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Scan Barcode'),
+        content: TextField(
+          controller: codeController,
+          autofocus: true,
+          decoration: const InputDecoration(
+            labelText: 'Kode barcode / SKU',
+            hintText: 'Contoh: 8991001001',
+          ),
+          onSubmitted: (value) => Navigator.pop(ctx, value),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Batal')),
+          ElevatedButton(onPressed: () => Navigator.pop(ctx, codeController.text), child: const Text('Cari & Tambah')),
+        ],
+      ),
+    );
+    if (!context.mounted || code == null) return;
+
+    final product = widget.state.findProductByBarcode(code);
+    if (product == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Barcode tidak ditemukan: ${code.trim()}')),
+      );
+      return;
+    }
+    final added = widget.state.addToCart(product);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Scan Barcode: ${scanned.name} dimasukkan (+1)'),
-        duration: const Duration(seconds: 2),
+        content: Text(
+          added
+              ? 'Scan Barcode: ${product.name} dimasukkan (+1)'
+              : 'Stok ${product.name} tidak mencukupi',
+        ),
       ),
     );
   }
