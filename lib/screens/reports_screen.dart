@@ -126,7 +126,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
                       child: _statItem('Total Omzet', FormatUtils.formatRupiah(widget.state.totalRevenueToday), AppColors.primary),
                     ),
                     Expanded(
-                      child: _statItem('Laba Bersih Estimasi', FormatUtils.formatRupiah(widget.state.totalGrossProfitToday), AppColors.success),
+                      child: _statItem('Laba Kotor', FormatUtils.formatRupiah(widget.state.totalGrossProfitToday), AppColors.success),
                     ),
                   ],
                 ),

@@ -223,12 +223,25 @@ class DashboardScreen extends StatelessWidget {
       builder: (context, constraints) {
         final bool wide = constraints.maxWidth >= 900;
         if (wide) {
-          return Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          return Column(
             children: [
-              Expanded(flex: 6, child: _buildSalesChartCard(context)),
-              const SizedBox(width: 16),
-              Expanded(flex: 4, child: _buildQuickActionsCard(context)),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(flex: 6, child: _buildSalesChartCard(context)),
+                  const SizedBox(width: 16),
+                  Expanded(flex: 4, child: _buildQuickActionsCard(context)),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(flex: 6, child: _buildRecentTransactionsCard(context)),
+                  const SizedBox(width: 16),
+                  Expanded(flex: 4, child: _buildLowStockCard(context)),
+                ],
+              ),
             ],
           );
         }
