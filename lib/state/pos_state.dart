@@ -1363,7 +1363,7 @@ class PosState extends ChangeNotifier {
   bool get hasNotifications => operationalAlerts.isNotEmpty;
 
   String get notificationSummary => hasNotifications
-      ? '${actionableAlertCount} perlu tindakan'
+      ? '$actionableAlertCount perlu tindakan'
       : 'Semua operasional aman';
 
 
