@@ -99,7 +99,10 @@ void main() {
   group('Dashboard aggregation and operational alerts', () {
     test('aggregates completed sales into each selected period', () {
       final state = PosState.sample();
-      final reference = DateTime(2026, 9, 7, 20);
+      final reference = state.transactions
+          .map((transaction) => transaction.dateTime)
+          .reduce((a, b) => a.isAfter(b) ? a : b)
+          .add(const Duration(hours: 1));
       final today = state.salesChartData(SalesPeriod.today, reference: reference);
       final week = state.salesChartData(SalesPeriod.sevenDays, reference: reference);
       final month = state.salesChartData(SalesPeriod.thirtyDays, reference: reference);
