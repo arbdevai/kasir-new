@@ -1078,6 +1078,116 @@ class PosState extends ChangeNotifier {
     }
   }
 
+  // --- User Account Management ---
+  bool _isValidUserPin(String pin) => RegExp(r'^\d{4,6}$').hasMatch(pin);
+
+  /// Adds a user account after validating name, role, and 4-6 digit numeric PIN.
+  bool addUserAccount({
+    required String name,
+    required UserRole role,
+    required String pin,
+    bool isActive = true,
+  }) {
+    final trimmedName = name.trim();
+    if (trimmedName.isEmpty) return false;
+    if (!_isValidUserPin(pin)) return false;
+    users.add(
+      UserAccount(
+        id: 'u_${DateTime.now().millisecondsSinceEpoch}_${users.length}',
+        name: trimmedName,
+        role: role,
+        pin: pin,
+        isActive: isActive,
+      ),
+    );
+    notifyListeners();
+    return true;
+  }
+
+  /// Edits an existing user account. Empty names and invalid PINs are rejected.
+  bool updateUserAccount(
+    String userId, {
+    String? name,
+    UserRole? role,
+    String? pin,
+    bool? isActive,
+  }) {
+    final index = users.indexWhere((u) => u.id == userId);
+    if (index < 0) return false;
+    final current = users[index];
+    final nextName = name == null ? current.name : name.trim();
+    if (nextName.isEmpty) return false;
+    if (pin != null && !_isValidUserPin(pin)) return false;
+    final updated = current.copyWith(
+      name: nextName,
+      role: role,
+      pin: pin,
+      isActive: isActive,
+    );
+    users[index] = updated;
+    if (currentUser.id == userId) {
+      if (updated.isActive) {
+        currentUser = updated;
+      } else {
+        final fallback = users.firstWhere(
+          (u) => u.isActive && u.id != userId,
+          orElse: () => updated.copyWith(isActive: true),
+        );
+        currentUser = fallback;
+        if (fallback.id == userId) users[index] = fallback;
+      }
+    }
+    notifyListeners();
+    return true;
+  }
+
+  /// Toggles the active status of a user account.
+  bool toggleUserStatus(String userId) {
+    final index = users.indexWhere((u) => u.id == userId);
+    if (index < 0) return false;
+    final toggled = users[index].copyWith(isActive: !users[index].isActive);
+    return updateUserAccount(userId, isActive: toggled.isActive);
+  }
+
+  /// Resets all transactional data after verifying an active owner PIN.
+  ///
+  /// Clears transactions and cart, drops stock mutations, discards active and
+  /// past shifts, restores a clean sample catalog, clears persisted settings
+  /// to defaults, and notifies listeners.
+  bool resetTotalData({required String ownerPin}) {
+    final owns = users.any(
+      (u) => u.isActive && u.role == UserRole.owner && u.pin == ownerPin,
+    );
+    if (!owns) return false;
+
+    final fresh = PosState.sample();
+    transactions = fresh.transactions.where((t) => false).toList();
+    cart = <CartItem>[];
+    orderDiscountPercent = 0.0;
+    orderDiscountNominal = 0.0;
+    activeCustomerName = '';
+    activeTableNumber = '';
+    activeOrderNote = '';
+    stockMutations = <StockMutation>[];
+    currentShift = null;
+    pastShifts = <Shift>[];
+    categories = fresh.categories;
+    products = fresh.products;
+    selectedCategoryId = 'all';
+    searchQuery = '';
+    storeProfile = const StoreProfile();
+    selectedPrinterName = const PrinterSettings().name;
+    selectedPaperSize = const PrinterSettings().paperSize;
+    isPrinterConnected = const PrinterSettings().isConnected;
+
+    final repository = settingsRepository;
+    if (repository != null) {
+      _ignorePersistenceError(repository.clear());
+    }
+    notifyListeners();
+    return true;
+  }
+
   // --- Authentication / User Switching ---
   bool switchUser(String userId, String pin) {
     final matches = users.where((u) => u.id == userId && u.isActive);
