@@ -34,7 +34,7 @@ void main() {
   test('backup validation represents valid and invalid payloads', () {
     const valid = RestoreValidation.valid();
     const invalid = RestoreValidation.invalid('bad checksum');
-    const artifact = BackupArtifact(
+    final artifact = BackupArtifact(
       bytes: Uint8List.fromList(<int>[1]),
       fileName: 'backup.kasir',
       contentType: 'application/octet-stream',

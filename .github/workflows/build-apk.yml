@@ -62,6 +62,8 @@ jobs:
           # Keep the checked-in Groovy Gradle configuration; Flutter 3.47
           # otherwise adds Kotlin DSL files beside it.
           find android -type f -name '*.gradle.kts' -delete
+          sed -i 's/org.jetbrains.kotlin.android" version "[^"]*"/org.jetbrains.kotlin.android" version "2.2.20"/' android/settings.gradle
+          sed -i 's/com.android.application" version "[^"]*"/com.android.application" version "8.11.1"/' android/settings.gradle
           test ! -e android/app/build.gradle.kts
           test ! -e android/settings.gradle.kts
           test ! -e android/build.gradle.kts
