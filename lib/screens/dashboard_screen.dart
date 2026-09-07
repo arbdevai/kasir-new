@@ -1,5 +1,3 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 
 import '../models/models.dart';
@@ -7,7 +5,7 @@ import '../state/pos_state.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_widgets.dart';
 
-class DashboardScreen extends StatelessWidget {
+class DashboardScreen extends StatefulWidget {
   final PosState state;
   final ValueChanged<int> onNavigateToTab;
   final VoidCallback? onRequestUserSwitch;
@@ -18,6 +16,42 @@ class DashboardScreen extends StatelessWidget {
     required this.onNavigateToTab,
     this.onRequestUserSwitch,
   });
+
+  @override
+  State<DashboardScreen> createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends State<DashboardScreen> {
+  SalesPeriod _selectedPeriod = SalesPeriod.today;
+
+  PosState get state => widget.state;
+  ValueChanged<int> get onNavigateToTab => widget.onNavigateToTab;
+  VoidCallback? get onRequestUserSwitch => widget.onRequestUserSwitch;
+
+  @override
+  void initState() {
+    super.initState();
+    state.addListener(_handleStateChanged);
+  }
+
+  @override
+  void didUpdateWidget(covariant DashboardScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.state != widget.state) {
+      oldWidget.state.removeListener(_handleStateChanged);
+      state.addListener(_handleStateChanged);
+    }
+  }
+
+  @override
+  void dispose() {
+    state.removeListener(_handleStateChanged);
+    super.dispose();
+  }
+
+  void _handleStateChanged() {
+    if (mounted) setState(() {});
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -62,12 +96,7 @@ class DashboardScreen extends StatelessWidget {
         ],
       ),
       actions: [
-        IconActionButton(
-          icon: Icons.notifications_none_rounded,
-          tooltip: 'Notifikasi',
-          onPressed: () => _showNotifications(context),
-          backgroundColor: Colors.transparent,
-        ),
+        _buildNotificationButton(context),
         Padding(
           padding: const EdgeInsets.only(right: 18, left: 5),
           child: PopupMenuButton<String>(
@@ -271,21 +300,16 @@ class DashboardScreen extends StatelessWidget {
   }
 
   Widget _buildSalesChartCard(BuildContext context) {
-    const chartData = [
-      0.42,
-      0.53,
-      0.47,
-      0.71,
-      0.59,
-      0.82,
-      0.68,
-      0.91,
-      0.74,
-      0.88,
-      0.80,
-      0.97,
-    ];
-    const labels = ['08.00', '09.00', '10.00', '11.00', '12.00', '13.00', '14.00', '15.00', '16.00', '17.00', '18.00', '19.00'];
+    final chartData = state.salesChartData(_selectedPeriod);
+    final normalized = chartData.values.map((value) {
+      if (chartData.maxValue <= 0) return 0.0;
+      return value / chartData.maxValue;
+    }).toList();
+    final subtitles = <SalesPeriod, String>{
+      SalesPeriod.today: 'Performa omzet hari ini per jam',
+      SalesPeriod.sevenDays: 'Performa omzet 7 hari terakhir',
+      SalesPeriod.thirtyDays: 'Performa omzet 30 hari terakhir',
+    };
 
     return GlassPanel(
       padding: const EdgeInsets.fromLTRB(20, 18, 20, 14),
@@ -294,12 +318,12 @@ class DashboardScreen extends StatelessWidget {
         children: [
           SectionHeader(
             title: 'Tren Penjualan',
-            subtitle: 'Performa omzet hari ini per jam',
+            subtitle: subtitles[_selectedPeriod],
             margin: EdgeInsets.zero,
             trailing: TabSegmentedControl(
               labels: const ['Hari ini', '7 hari', '30 hari'],
-              selectedIndex: 0,
-              onChanged: (_) {},
+              selectedIndex: _selectedPeriod.index,
+              onChanged: (index) => setState(() => _selectedPeriod = SalesPeriod.values[index]),
             ),
           ),
           const SizedBox(height: 20),
@@ -307,7 +331,7 @@ class DashboardScreen extends StatelessWidget {
             height: 214,
             child: CustomPaint(
               painter: _SalesChartPainter(
-                data: chartData,
+                data: normalized,
                 lineColor: AppColors.primary,
                 fillColor: AppColors.primary.withOpacity(0.12),
                 gridColor: AppColors.divider,
@@ -318,7 +342,7 @@ class DashboardScreen extends StatelessWidget {
                   const Spacer(),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: labels.map((label) {
+                    children: chartData.labels.map((label) {
                       return Text(
                         label,
                         style: const TextStyle(fontSize: 10, color: AppColors.textMuted, fontWeight: FontWeight.w500),
@@ -336,9 +360,9 @@ class DashboardScreen extends StatelessWidget {
               const SizedBox(width: 7),
               const Text('Omzet', style: TextStyle(fontSize: 11, color: AppColors.textSecondary, fontWeight: FontWeight.w600)),
               const SizedBox(width: 18),
-              const Text('Puncak penjualan', style: TextStyle(fontSize: 11, color: AppColors.textMuted)),
+              const Text('Total periode', style: TextStyle(fontSize: 11, color: AppColors.textMuted)),
               const Spacer(),
-              const Text('Rp 128,4 jt', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
+              Text(FormatUtils.formatRupiah(chartData.total), style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
             ],
           ),
         ],
@@ -527,8 +551,45 @@ class DashboardScreen extends StatelessWidget {
     );
   }
 
+  Widget _buildNotificationButton(BuildContext context) {
+    final badgeCount = state.actionableAlertCount;
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => _showNotifications(context),
+        borderRadius: BorderRadius.circular(12),
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            const Padding(
+              padding: EdgeInsets.all(10),
+              child: Icon(Icons.notifications_none_rounded, color: AppColors.textPrimary, size: 19),
+            ),
+            if (badgeCount > 0)
+              Positioned(
+                right: 4,
+                top: 4,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: AppColors.danger,
+                    borderRadius: BorderRadius.circular(999),
+                    border: Border.all(color: AppColors.surface, width: 1),
+                  ),
+                  child: Text(
+                    badgeCount > 9 ? '9+' : '$badgeCount',
+                    style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w800),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
   void _showNotifications(BuildContext context) {
-    final lowCount = state.products.where((p) => p.isLowStock).length;
+    final alerts = state.operationalAlerts;
     showModalBottomSheet(
       context: context,
       showDragHandle: true,
@@ -538,16 +599,35 @@ class DashboardScreen extends StatelessWidget {
         return SafeArea(
           child: Padding(
             padding: const EdgeInsets.fromLTRB(20, 4, 20, 28),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('Notifikasi Operasional', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
-                const SizedBox(height: 18),
-                _notificationRow(Icons.inventory_rounded, AppColors.warning, '$lowCount produk stok menipis', 'Segera buat pesanan restock untuk menjaga penjualan.'),
-                _notificationRow(Icons.cloud_done_rounded, AppColors.success, 'Backup lokal tersimpan', 'Data terakhir tersimpan di perangkat ini 12 menit lalu.'),
-                _notificationRow(Icons.print_rounded, AppColors.info, 'Printer siap digunakan', state.isPrinterConnected ? 'RP-58 Bluetooth Thermal terhubung.' : 'Belum ada printer terhubung.'),
-              ],
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxHeight: 520),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Notifikasi Operasional', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
+                  const SizedBox(height: 4),
+                  Text(
+                    alerts.isEmpty ? 'Semua operasional aman.' : '${state.actionableAlertCount} perlu tindakan',
+                    style: const TextStyle(fontSize: 12, color: AppColors.textSecondary, fontWeight: FontWeight.w500),
+                  ),
+                  const SizedBox(height: 14),
+                  if (alerts.isEmpty)
+                    const EmptyState(icon: Icons.notifications_active_rounded, title: 'Tidak Ada Notifikasi', subtitle: 'Semua operasional kasir berjalan normal.')
+                  else
+                    Flexible(
+                      child: ListView.separated(
+                        shrinkWrap: true,
+                        itemCount: alerts.length,
+                        separatorBuilder: (_, __) => const SizedBox(height: 8),
+                        itemBuilder: (notificationContext, index) {
+                          final alert = alerts[index];
+                          return _notificationRow(notificationContext, alert);
+                        },
+                      ),
+                    ),
+                ],
+              ),
             ),
           ),
         );
@@ -555,16 +635,27 @@ class DashboardScreen extends StatelessWidget {
     );
   }
 
-  Widget _notificationRow(IconData icon, Color color, String title, String subtitle) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(width: 38, height: 38, decoration: BoxDecoration(color: color.withOpacity(0.11), borderRadius: BorderRadius.circular(12)), child: Icon(icon, color: color, size: 19)),
-          const SizedBox(width: 11),
-          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textPrimary)), const SizedBox(height: 3), Text(subtitle, style: const TextStyle(fontSize: 11, color: AppColors.textSecondary, height: 1.3))])),
-        ],
+  Widget _notificationRow(BuildContext context, OperationalAlert alert) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () {
+          Navigator.pop(context);
+          onNavigateToTab(alert.navigationTab);
+        },
+        borderRadius: BorderRadius.circular(14),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 7),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(width: 38, height: 38, decoration: BoxDecoration(color: alert.color.withOpacity(0.11), borderRadius: BorderRadius.circular(12)), child: Icon(alert.icon, color: alert.color, size: 19)),
+              const SizedBox(width: 11),
+              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(alert.title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textPrimary)), const SizedBox(height: 3), Text(alert.subtitle, style: const TextStyle(fontSize: 11, color: AppColors.textSecondary, height: 1.3))])),
+              const Icon(Icons.chevron_right_rounded, color: AppColors.textMuted, size: 19),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -629,5 +720,5 @@ class _SalesChartPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant _SalesChartPainter oldDelegate) => false;
+  bool shouldRepaint(covariant _SalesChartPainter oldDelegate) => oldDelegate.data != data;
 }

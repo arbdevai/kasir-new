@@ -8,8 +8,8 @@ Dokumentasi ini menjelaskan langkah-langkah aman untuk membuat, mengonfigurasi, 
 - **JANGAN PERNAH** melakukan commit file keystore (`.jks` / `.keystore`) atau file `key.properties` ke dalam git repository.
 - Selalu pastikan file keystore dan `key.properties` terdaftar di `.gitignore`.
 - Simpan kredensial keystore secara aman pada GitHub Secrets (`Settings -> Secrets and variables -> Actions`).
-- Build branch non-release di CI memproduksi APK release unsigned tanpa fallback ke debug key untuk mencegah kebingungan artifact release.
-- Rilis resmi bertanda tangan digital (signed release) hanya dipicu pada git tag (`v*.*.*`) atau `workflow_dispatch` dengan input `create_release: true`.
+- Build branch biasa di CI hanya memproduksi APK debug; workflow tidak mempublikasikan artifact release unsigned yang dapat disalahartikan sebagai rilis resmi.
+- Rilis resmi bertanda tangan digital (signed release) hanya dipicu pada git tag (`v*.*.*`) atau `workflow_dispatch` dengan input `create_release: true`, setelah seluruh secret signing tersedia.
 
 ---
 
@@ -123,12 +123,13 @@ Pada workflow `.github/workflows/build-apk.yml`:
    - Melakukan decode base64 kembali menjadi file binary `android/app/upload-keystore.jks`.
    - Menulis file `android/key.properties` dengan parameter dari secrets.
 5. **Build APK**:
-   - Menjalankan `flutter build apk --debug --android-skip-build-dependency-validation`.
-   - Menjalankan `flutter build apk --release --android-skip-build-dependency-validation`.
-   - Pada commit branch biasa (tanpa tag/flag release), `key.properties` sengaja tidak di-generate sehingga APK release yang dihasilkan tetap berstatus unsigned murni tanpa fallback ke debug keys.
+   - Menjalankan `flutter build apk --debug --android-skip-build-dependency-validation` pada seluruh workflow.
+   - Hanya pada tag atau dispatch dengan `create_release: true`, setelah secret tervalidasi, menjalankan `flutter build apk --release --android-skip-build-dependency-validation`.
+   - Workflow menjalankan `apksigner verify --verbose` dan mencetak certificate SHA-256 digest untuk APK release yang ditandatangani.
+   - Branch biasa tidak memproduksi atau mengunggah artifact release unsigned; konfigurasi Gradle tidak memiliki fallback ke debug signing key.
 6. **Publishing Artifacts & Draft Release**:
-   - Mengunggah artifact `app-debug` dan `app-release` (retensi 14 hari).
-   - Membuat draft GitHub Release berisikan artifact APK resmi.
+   - Mengunggah artifact `app-debug` (retensi 14 hari) pada semua build.
+   - Mengunggah `app-release-signed` hanya pada tag/dispatch release dan membuat draft GitHub Release berisi APK signed serta debug APK.
 
 ---
 
@@ -140,4 +141,4 @@ Untuk mempublikasikan rilis APK otomatis ke GitHub Releases:
    git tag -a v1.0.0 -m "Release version 1.0.0"
    git push origin v1.0.0
    ```
-2. GitHub Actions akan secara otomatis mendeteksi tag `v*.*.*`, memvalidasi secrets signing, mem-build `app-debug.apk` dan signed `app-release.apk`, lalu membuat GitHub Release draft dengan kedua file APK terlampir.
+2. GitHub Actions akan secara otomatis mendeteksi tag `v*.*.*`, memvalidasi secrets signing, mem-build `app-debug.apk` dan signed `app-release-signed.apk`, memverifikasi signature dengan `apksigner`, mencetak certificate SHA-256 digest, lalu membuat GitHub Release draft dengan kedua file APK terlampir.

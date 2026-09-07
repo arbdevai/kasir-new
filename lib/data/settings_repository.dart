@@ -34,6 +34,14 @@ class SettingsRepository {
     return _writeMap(_printerSettingsKey, settings.toMap());
   }
 
+  /// Removes all user-editable settings so the application falls back to its
+  /// model defaults on the next read.
+  Future<bool> clear() async {
+    final storeCleared = await _preferences.remove(_storeProfileKey);
+    final printerCleared = await _preferences.remove(_printerSettingsKey);
+    return storeCleared && printerCleared;
+  }
+
   Map<String, dynamic>? _readMap(String key) {
     final raw = _preferences.getString(key);
     if (raw == null) return null;
