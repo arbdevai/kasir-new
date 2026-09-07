@@ -867,42 +867,45 @@ class _UserSwitchDialogState extends State<UserSwitchDialog> {
                 final selectable = u.isActive && !isCurrent;
                 return Opacity(
                   opacity: u.isActive ? 1 : 0.45,
-                  child: ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    enabled: selectable,
-                    leading: CircleAvatar(
-                      backgroundColor: isCurrent ? AppColors.primary : AppColors.surfaceSecondary,
-                      child: Text(
-                        u.name.substring(0, 1),
-                        style: TextStyle(
-                          color: isCurrent ? Colors.white : AppColors.textPrimary,
-                          fontWeight: FontWeight.w700,
+                  child: Material(
+                    color: Colors.transparent,
+                    child: ListTile(
+                      contentPadding: EdgeInsets.zero,
+                      enabled: selectable,
+                      leading: CircleAvatar(
+                        backgroundColor: isCurrent ? AppColors.primary : AppColors.surfaceSecondary,
+                        child: Text(
+                          u.name.substring(0, 1),
+                          style: TextStyle(
+                            color: isCurrent ? Colors.white : AppColors.textPrimary,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
                       ),
+                      title: Text(
+                        u.name,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+                      ),
+                      subtitle: Text(
+                        u.isActive ? u.roleTitle : '${u.roleTitle} • Nonaktif',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      trailing: isCurrent
+                          ? const Icon(Icons.check_circle_rounded, color: AppColors.primary)
+                          : const Icon(Icons.chevron_right_rounded),
+                      onTap: selectable
+                          ? () {
+                              setState(() {
+                                _selectedUser = u;
+                                _pinController.clear();
+                                _errorText = null;
+                              });
+                            }
+                          : null,
                     ),
-                    title: Text(
-                      u.name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
-                    ),
-                    subtitle: Text(
-                      u.isActive ? u.roleTitle : '${u.roleTitle} • Nonaktif',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    trailing: isCurrent
-                        ? const Icon(Icons.check_circle_rounded, color: AppColors.primary)
-                        : const Icon(Icons.chevron_right_rounded),
-                    onTap: selectable
-                        ? () {
-                            setState(() {
-                              _selectedUser = u;
-                              _pinController.clear();
-                              _errorText = null;
-                            });
-                          }
-                        : null,
                   ),
                 );
               }),

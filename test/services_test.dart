@@ -293,7 +293,7 @@ void main() {
 
     test('handles connection timeout safely and sets state to failed', () async {
       final connection = TcpNetworkPrinterConnection(
-        connectTimeout: const Duration(milliseconds: 50),
+        connectTimeout: const Duration(seconds: 1),
         socketFactory: (host, port, {timeout = const Duration(seconds: 5)}) async {
           throw TimeoutException('Simulated timeout');
         },
