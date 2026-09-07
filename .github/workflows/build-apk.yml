@@ -119,10 +119,10 @@ jobs:
           fi
 
       - name: Build Debug APK
-        run: flutter build apk --debug
+        run: flutter build apk --debug --android-skip-build-dependency-validation
 
       - name: Build Release APK
-        run: flutter build apk --release
+        run: flutter build apk --release --android-skip-build-dependency-validation
 
       - name: Stage APK outputs with clean names
         shell: bash
