@@ -26,6 +26,39 @@ PosState _applyPersistedSettings(PosState state, SettingsRepository repository) 
   return state;
 }
 
+enum SalesPeriod { today, sevenDays, thirtyDays }
+
+class SalesChartData {
+  final SalesPeriod period;
+  final List<String> labels;
+  final List<double> values;
+
+  const SalesChartData({required this.period, required this.labels, required this.values});
+
+  double get total => values.fold(0.0, (sum, value) => sum + value);
+  double get maxValue => values.fold(0.0, (max, value) => value > max ? value : max);
+}
+
+class OperationalAlert {
+  final String id;
+  final String title;
+  final String subtitle;
+  final IconData icon;
+  final Color color;
+  final int navigationTab;
+  final bool requiresAction;
+
+  const OperationalAlert({
+    required this.id,
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+    required this.color,
+    required this.navigationTab,
+    this.requiresAction = true,
+  });
+}
+
 PosState createPosState(SettingsRepository repository) {
   return _applyPersistedSettings(PosState.sample(), repository);
 }
@@ -1230,6 +1263,110 @@ class PosState extends ChangeNotifier {
   // --- Analytics & Reports Helpers ---
   bool _isSameCalendarDay(DateTime a, DateTime b) =>
       a.year == b.year && a.month == b.month && a.day == b.day;
+
+  /// Aggregates completed transaction revenue into stable buckets for the dashboard chart.
+  /// The optional reference time keeps this logic deterministic for reports and tests.
+  SalesChartData salesChartData(SalesPeriod period, {DateTime? reference}) {
+    final now = reference ?? DateTime.now();
+    late final List<String> labels;
+    late final List<DateTime> starts;
+    late final Duration bucketSize;
+
+    switch (period) {
+      case SalesPeriod.today:
+        final first = DateTime(now.year, now.month, now.day, now.hour).subtract(const Duration(hours: 11));
+        bucketSize = const Duration(hours: 1);
+        starts = List<DateTime>.generate(12, (index) => first.add(Duration(hours: index)));
+        labels = starts.map((date) => '${date.hour.toString().padLeft(2, '0')}.00').toList();
+      case SalesPeriod.sevenDays:
+        final first = DateTime(now.year, now.month, now.day).subtract(const Duration(days: 6));
+        bucketSize = const Duration(days: 1);
+        starts = List<DateTime>.generate(7, (index) => first.add(Duration(days: index)));
+        labels = starts.map((date) => '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}').toList();
+      case SalesPeriod.thirtyDays:
+        final first = DateTime(now.year, now.month, now.day).subtract(const Duration(days: 29));
+        bucketSize = const Duration(days: 5);
+        starts = List<DateTime>.generate(6, (index) => first.add(Duration(days: index * 5)));
+        labels = starts.map((date) => '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}').toList();
+    }
+
+    final values = List<double>.filled(starts.length, 0.0);
+    for (final transaction in transactions) {
+      if (transaction.status != TransactionStatus.completed) continue;
+      final difference = transaction.dateTime.difference(starts.first);
+      final index = difference.inMilliseconds ~/ bucketSize.inMilliseconds;
+      if (index >= 0 && index < values.length) values[index] += transaction.total;
+    }
+    return SalesChartData(period: period, labels: labels, values: values);
+  }
+
+  List<OperationalAlert> get operationalAlerts {
+    final alerts = <OperationalAlert>[];
+    final lowStockCount = products.where((product) => product.isLowStock).length;
+    if (lowStockCount > 0) {
+      alerts.add(OperationalAlert(
+        id: 'low-stock',
+        title: '$lowStockCount produk stok menipis',
+        subtitle: 'Segera restock produk di bawah minimum alert.',
+        icon: Icons.inventory_rounded,
+        color: AppColors.warning,
+        navigationTab: 2,
+      ));
+    }
+    final holdCount = transactions.where((transaction) => transaction.status == TransactionStatus.hold).length;
+    if (holdCount > 0) {
+      alerts.add(OperationalAlert(
+        id: 'held-orders',
+        title: '$holdCount pesanan tertunda',
+        subtitle: 'Recall pesanan hold agar tidak terlupakan.',
+        icon: Icons.pause_circle_outline_rounded,
+        color: AppColors.warning,
+        navigationTab: 1,
+      ));
+    }
+    final debtCount = transactions.where((transaction) => transaction.status == TransactionStatus.debt).length;
+    if (debtCount > 0) {
+      alerts.add(OperationalAlert(
+        id: 'debts',
+        title: '$debtCount kasbon belum lunas',
+        subtitle: 'Tinjau buku kasbon dan catat pelunasan.',
+        icon: Icons.receipt_long_rounded,
+        color: AppColors.danger,
+        navigationTab: 3,
+      ));
+    }
+    if (currentShift == null) {
+      alerts.add(const OperationalAlert(
+        id: 'shift-closed',
+        title: 'Shift kasir belum dibuka',
+        subtitle: 'Buka shift sebelum menerima transaksi baru.',
+        icon: Icons.schedule_rounded,
+        color: AppColors.info,
+        navigationTab: 1,
+      ));
+    }
+    if (!isPrinterConnected) {
+      alerts.add(OperationalAlert(
+        id: 'printer-disconnected',
+        title: 'Printer belum terhubung',
+        subtitle: 'Hubungkan printer agar struk dapat dicetak.',
+        icon: Icons.print_disabled_rounded,
+        color: AppColors.danger,
+        navigationTab: 4,
+      ));
+    }
+    return alerts;
+  }
+
+  int get actionableAlertCount => operationalAlerts.where((alert) => alert.requiresAction).length;
+
+  bool get hasNotifications => operationalAlerts.isNotEmpty;
+
+  String get notificationSummary => hasNotifications
+      ? '${actionableAlertCount} perlu tindakan'
+      : 'Semua operasional aman';
+
+
 
   double get totalRevenueToday {
     final now = DateTime.now();

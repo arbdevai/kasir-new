@@ -96,6 +96,48 @@ void main() {
     });
   });
 
+  group('Dashboard aggregation and operational alerts', () {
+    test('aggregates completed sales into each selected period', () {
+      final state = PosState.sample();
+      final reference = DateTime(2026, 9, 7, 20);
+      final today = state.salesChartData(SalesPeriod.today, reference: reference);
+      final week = state.salesChartData(SalesPeriod.sevenDays, reference: reference);
+      final month = state.salesChartData(SalesPeriod.thirtyDays, reference: reference);
+
+      expect(today.labels, hasLength(12));
+      expect(today.values, hasLength(12));
+      expect(today.total, closeTo(245000, 0.01));
+      expect(week.labels, hasLength(7));
+      expect(week.total, closeTo(today.total, 0.01));
+      expect(month.labels, hasLength(6));
+      expect(month.total, closeTo(today.total, 0.01));
+      expect(today.values.any((value) => value > 0), isTrue);
+    });
+
+    test('operational alerts reflect stock, hold, debt, shift, and printer state', () {
+      final state = PosState.sample();
+      expect(state.operationalAlerts.map((alert) => alert.id), containsAll(<String>[
+        'low-stock',
+        'held-orders',
+        'debts',
+      ]));
+      expect(state.actionableAlertCount, 3);
+
+      state.products = state.products.map((product) => product.copyWith(stock: product.minStockAlert + 1)).toList();
+      state.transactions = state.transactions.where((transaction) => transaction.status == TransactionStatus.completed).toList();
+      state.currentShift = null;
+      state.updatePrinterSettings(isConnected: false);
+
+      expect(state.operationalAlerts.map((alert) => alert.id), containsAll(<String>[
+        'shift-closed',
+        'printer-disconnected',
+      ]));
+      expect(state.operationalAlerts.map((alert) => alert.id), isNot(contains('low-stock')));
+      expect(state.operationalAlerts.map((alert) => alert.id), isNot(contains('held-orders')));
+      expect(state.operationalAlerts.map((alert) => alert.id), isNot(contains('debts')));
+    });
+  });
+
   group('Report export service', () {
     test('exports CSV with proper header and escaped cells', () {
       final state = PosState.sample();
