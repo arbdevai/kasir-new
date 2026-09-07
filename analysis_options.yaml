@@ -13,6 +13,9 @@ analyzer:
     prefer_collection_literals: ignore
     curly_braces_in_flow_control_structures: ignore
     unnecessary_library_name: ignore
+    non_const_argument_for_const_parameter: ignore
+    use_super_parameters: ignore
+    unnecessary_import: ignore
 
 linter:
   rules:
