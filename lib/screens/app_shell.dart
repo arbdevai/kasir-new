@@ -115,12 +115,17 @@ class _AppShellState extends State<AppShell> {
                             ),
                           ),
                           const SizedBox(width: 5),
-                          const Text(
-                            'Offline POS Active',
-                            style: TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w500,
-                              color: AppColors.textSecondary,
+                          const Expanded(
+                            child: Text(
+                              'Offline POS Active',
+                              overflow: TextOverflow.ellipsis,
+                              maxLines: 1,
+                              softWrap: false,
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w500,
+                                color: AppColors.textSecondary,
+                              ),
                             ),
                           ),
                         ],
