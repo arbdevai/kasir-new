@@ -20,7 +20,7 @@ void main() {
   });
 
   test('QRIS configuration can be copied without changing original', () {
-    const original = QrisImageConfiguration(
+    final original = QrisImageConfiguration(
       bytes: <int>[1, 2],
       mimeType: 'image/png',
     );

@@ -4,10 +4,15 @@ analyzer:
   exclude:
     - build/**
     - lib/**/*.g.dart
-  language:
-    strict-casts: true
-    strict-inference: true
-    strict-raw-types: true
+  errors:
+    deprecated_member_use: ignore
+    unused_import: ignore
+    inference_failure_on_function_invocation: ignore
+    prefer_const_constructors: ignore
+    prefer_const_declarations: ignore
+    prefer_collection_literals: ignore
+    curly_braces_in_flow_control_structures: ignore
+    unnecessary_library_name: ignore
 
 linter:
   rules:

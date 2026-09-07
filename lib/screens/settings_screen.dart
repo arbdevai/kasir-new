@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import '../models/models.dart';
 import '../state/pos_state.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_widgets.dart';

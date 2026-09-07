@@ -54,7 +54,7 @@ class AppTheme {
         error: AppColors.danger,
         onError: AppColors.textInverse,
       ),
-      cardTheme: CardTheme(
+      cardTheme: CardThemeData(
         color: AppColors.surface,
         elevation: 0,
         shape: RoundedRectangleBorder(

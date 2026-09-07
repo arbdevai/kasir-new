@@ -57,7 +57,22 @@ jobs:
       # The repository keeps a small Android scaffold; Flutter supplies the
       # generated Gradle wrapper and embedding files in CI.
       - name: Complete Flutter platform scaffold
-        run: flutter create --no-pub --platforms=android .
+        run: |
+          flutter create --no-pub --platforms=android .
+          # Keep the checked-in Groovy Gradle configuration; Flutter 3.47
+          # otherwise adds Kotlin DSL files beside it.
+          find android -type f -name '*.gradle.kts' -delete
+          test ! -e android/app/build.gradle.kts
+          test ! -e android/settings.gradle.kts
+          test ! -e android/build.gradle.kts
+          test -e android/app/build.gradle
+          test -e android/settings.gradle
+          test -e android/build.gradle
+          test -e android/app/src/main/kotlin/com/kasir/newpos/MainActivity.kt
+          test -e android/app/src/main/AndroidManifest.xml
+          test -e android/app/src/main/res/values/styles.xml
+          true
+
 
       - name: Install dependencies
         run: flutter pub get
