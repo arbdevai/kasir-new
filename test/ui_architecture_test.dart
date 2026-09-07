@@ -61,8 +61,8 @@ void main() {
   });
 
   group('Pure-Dart EscPos and TCP Printer', () {
-    test('BasicEscPosReceiptFormatter formats document correctly', () {
-      const formatter = BasicEscPosReceiptFormatter();
+    test('EscPosTextFormatter formats document correctly', () {
+      const formatter = EscPosTextFormatter();
       const doc = ReceiptDocument(
         header: ReceiptSection(lines: [
           ReceiptLine(text: 'Kopi & Roti Nusantara', alignment: ReceiptAlignment.center, emphasis: true),
@@ -81,22 +81,23 @@ void main() {
       expect(bytes.sublist(0, 2), <int>[0x1B, 0x40]); // ESC @
     });
 
-    test('CallbackPrinterConnection invokes write callback', () async {
-      final written = <int>[];
-      final connection = CallbackPrinterConnection(
-        type: PrinterConnectionType.bluetooth,
-        writer: (data) async => written.addAll(data),
+    test('SafeReceiptPrinter invokes write callback through connection', () async {
+      final written = <List<int>>[];
+      final connection = _MemoryPrinterConnection(
+        onWrite: (data) => written.add(List<int>.from(data)),
       );
-      final printer = FormattedReceiptPrinter(
-        formatter: const BasicEscPosReceiptFormatter(),
+      final printer = SafeReceiptPrinter(
+        formatter: const EscPosTextFormatter(),
         connection: connection,
+        autoConnect: false,
       );
 
       const doc = ReceiptDocument(lines: [ReceiptLine(text: 'Halo Kasir')]);
-      await printer.print(doc);
+      final result = await printer.safePrint(doc);
 
+      expect(result.isSuccess, isTrue);
       expect(written, isNotEmpty);
-      expect(printer.connection?.state, PrinterConnectionState.connected);
+      expect(printer.connection.state, PrinterConnectionState.connected);
     });
   });
 
