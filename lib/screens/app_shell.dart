@@ -424,38 +424,50 @@ class _AppShellState extends State<AppShell> {
               Text('Ganti Akun Kasir / Role', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
             ],
           ),
-          content: SizedBox(
-            width: 320,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: widget.state.users.map((u) {
-                final isCurrent = u.id == widget.state.currentUser.id;
-                return ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: CircleAvatar(
-                    backgroundColor: isCurrent ? AppColors.primary : AppColors.surfaceSecondary,
-                    child: Text(
-                      u.name.substring(0, 1),
-                      style: TextStyle(
-                        color: isCurrent ? Colors.white : AppColors.textPrimary,
-                        fontWeight: FontWeight.w700,
+          content: ConstrainedBox(
+            constraints: BoxConstraints(
+              // Keep the account list usable on short phones and in split-screen.
+              maxWidth: 320,
+              maxHeight: MediaQuery.sizeOf(context).height * 0.5,
+            ),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: widget.state.users.map((u) {
+                  final isCurrent = u.id == widget.state.currentUser.id;
+                  return ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: CircleAvatar(
+                      backgroundColor: isCurrent ? AppColors.primary : AppColors.surfaceSecondary,
+                      child: Text(
+                        u.name.substring(0, 1),
+                        style: TextStyle(
+                          color: isCurrent ? Colors.white : AppColors.textPrimary,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
-                  ),
-                  title: Text(u.name, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
-                  subtitle: Text(u.roleTitle),
-                  trailing: isCurrent
-                      ? const Icon(Icons.check_circle_rounded, color: AppColors.primary)
-                      : const Icon(Icons.chevron_right_rounded),
-                  onTap: () {
-                    widget.state.switchUser(u.id, u.pin);
-                    Navigator.pop(ctx);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Beralih ke akun ${u.name} (${u.roleTitle})')),
-                    );
-                  },
-                );
-              }).toList(),
+                    title: Text(
+                      u.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+                    ),
+                    // Never display account PINs in the account switcher.
+                    subtitle: Text(u.roleTitle),
+                    trailing: isCurrent
+                        ? const Icon(Icons.check_circle_rounded, color: AppColors.primary)
+                        : const Icon(Icons.chevron_right_rounded),
+                    onTap: () {
+                      widget.state.switchUser(u.id, u.pin);
+                      Navigator.pop(ctx);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Beralih ke akun ${u.name} (${u.roleTitle})')),
+                      );
+                    },
+                  );
+                }).toList(),
+              ),
             ),
           ),
         );

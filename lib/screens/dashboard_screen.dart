@@ -565,22 +565,30 @@ class DashboardScreen extends StatelessWidget {
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text('Ganti Akun', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: state.users.map((user) {
-            final active = user.id == state.currentUser.id;
-            return ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: CircleAvatar(backgroundColor: active ? AppColors.primary : AppColors.surfaceSecondary, child: Text(user.name.substring(0, 1), style: TextStyle(color: active ? Colors.white : AppColors.textPrimary))),
-              title: Text(user.name, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
-              subtitle: Text(user.roleTitle),
-              trailing: active ? const Icon(Icons.check_circle_rounded, color: AppColors.primary) : const Icon(Icons.chevron_right_rounded),
-              onTap: () {
-                state.switchUser(user.id, user.pin);
-                Navigator.pop(ctx);
-              },
-            );
-          }).toList(),
+        content: ConstrainedBox(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.sizeOf(context).height * 0.5,
+          ),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: state.users.map((user) {
+                final active = user.id == state.currentUser.id;
+                final initial = user.name.trim().isEmpty ? '?' : user.name.trim().substring(0, 1);
+                return ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: CircleAvatar(backgroundColor: active ? AppColors.primary : AppColors.surfaceSecondary, child: Text(initial, style: TextStyle(color: active ? Colors.white : AppColors.textPrimary))),
+                  title: Text(user.name, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
+                  subtitle: Text(user.roleTitle, maxLines: 1, overflow: TextOverflow.ellipsis),
+                  trailing: active ? const Icon(Icons.check_circle_rounded, color: AppColors.primary) : const Icon(Icons.chevron_right_rounded),
+                  onTap: () {
+                    state.switchUser(user.id, user.pin);
+                    Navigator.pop(ctx);
+                  },
+                );
+              }).toList(),
+            ),
+          ),
         ),
       ),
     );

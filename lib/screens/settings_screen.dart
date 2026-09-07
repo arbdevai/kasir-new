@@ -84,8 +84,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ),
                         SwitchListTile(
                           contentPadding: EdgeInsets.zero,
-                          title: Text(widget.state.selectedPrinterName, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
-                          subtitle: Text('Ukuran kertas: ${widget.state.selectedPaperSize}'),
+                          title: Text(widget.state.selectedPrinterName, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+                          subtitle: Text('Ukuran kertas: ${widget.state.selectedPaperSize}', maxLines: 1, overflow: TextOverflow.ellipsis),
                           value: widget.state.isPrinterConnected,
                           activeColor: AppColors.primary,
                           onChanged: (val) {
