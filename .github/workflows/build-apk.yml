@@ -26,7 +26,7 @@ concurrency:
 
 jobs:
   build:
-    name: Build Debug and Release APK
+    name: Build APK (debug always; signed release on tag/manual)
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
@@ -124,17 +124,39 @@ jobs:
       - name: Build Debug APK
         run: flutter build apk --debug --android-skip-build-dependency-validation
 
-      # Branch builds intentionally produce an unsigned release APK. Tag and
-      # opted-in manual builds are signed after the required secrets validate.
-      - name: Build Release APK
+      # Release APKs are built only for signed tag/manual release runs. Branch
+      # builds publish the debug APK and do not produce a misleading release APK.
+      - name: Build signed Release APK
+        if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.create_release == true)
         run: flutter build apk --release --android-skip-build-dependency-validation
 
-      - name: Stage APK outputs with clean names
+      - name: Verify signed Release APK and print certificate SHA-256
+        if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.create_release == true)
         shell: bash
         run: |
+          set -euo pipefail
+          apk=build/app/outputs/flutter-apk/app-release.apk
+          apksigner="$ANDROID_HOME/build-tools/36.0.0/apksigner"
+          test -x "$apksigner" || { echo "apksigner not found at $apksigner"; exit 1; }
+          "$apksigner" verify --verbose "$apk"
+          echo "Release APK certificate SHA-256:"
+          cert_output="$($apksigner verify --print-certs "$apk")"
+          printf '%s\n' "$cert_output"
+          grep -F "certificate SHA-256 digest:" <<< "$cert_output"
+
+      - name: Stage Debug APK with clean name
+        shell: bash
+        run: |
+          set -euo pipefail
           mkdir -p build-outputs
           cp build/app/outputs/flutter-apk/app-debug.apk build-outputs/app-debug.apk
-          cp build/app/outputs/flutter-apk/app-release.apk build-outputs/app-release.apk
+
+      - name: Stage signed Release APK with clean name
+        if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.create_release == true)
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp build/app/outputs/flutter-apk/app-release.apk build-outputs/app-release-signed.apk
 
       - name: Upload Debug APK Artifact
         uses: actions/upload-artifact@v4
@@ -144,11 +166,12 @@ jobs:
           if-no-files-found: error
           retention-days: 14
 
-      - name: Upload Release APK Artifact
+      - name: Upload Signed Release APK Artifact
+        if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.create_release == true)
         uses: actions/upload-artifact@v4
         with:
-          name: app-release
-          path: build-outputs/app-release.apk
+          name: app-release-signed
+          path: build-outputs/app-release-signed.apk
           if-no-files-found: error
           retention-days: 14
 
@@ -171,14 +194,14 @@ jobs:
       - name: Download signed Release APK
         uses: actions/download-artifact@v4
         with:
-          name: app-release
+          name: app-release-signed
           path: build-outputs
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            build-outputs/app-release.apk
+            build-outputs/app-release-signed.apk
             build-outputs/app-debug.apk
           draft: true
           prerelease: false
