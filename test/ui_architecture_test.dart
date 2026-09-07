@@ -6,6 +6,40 @@ import 'package:kasir_new/main.dart';
 import 'package:kasir_new/models/models.dart';
 import 'package:kasir_new/state/pos_state.dart';
 
+class _MemoryPrinterConnection implements PrinterConnection {
+  _MemoryPrinterConnection({required this.onWrite});
+
+  final void Function(Uint8List data) onWrite;
+  PrinterConnectionState _state = PrinterConnectionState.connected;
+
+  @override
+  PrinterConnectionType get type => PrinterConnectionType.network;
+
+  @override
+  PrinterConnectionState get state => _state;
+
+  @override
+  Future<List<PrinterDevice>> discover() async => const <PrinterDevice>[];
+
+  @override
+  Future<void> connect(PrinterEndpoint endpoint) async {
+    _state = PrinterConnectionState.connected;
+  }
+
+  @override
+  Future<void> disconnect() async {
+    _state = PrinterConnectionState.disconnected;
+  }
+
+  @override
+  Future<void> write(Uint8List data) async {
+    if (_state != PrinterConnectionState.connected) {
+      throw const PrinterNotConnectedException();
+    }
+    onWrite(data);
+  }
+}
+
 void main() {
   group('POS State & Security Logic', () {
     test('User account role title uses standardized Super Admin', () {
