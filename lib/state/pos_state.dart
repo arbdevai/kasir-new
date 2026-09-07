@@ -743,9 +743,18 @@ class PosState extends ChangeNotifier {
     if (cart.isEmpty) {
       throw StateError('Keranjang transaksi kosong');
     }
+    final Map<String, int> requestedByProduct = <String, int>{};
     for (final item in cart) {
-      if (!canAddQuantity(item.product, variant: item.selectedVariant, note: item.note, requestedQuantity: item.quantity - cart.where((other) => other.product.id == item.product.id && other.selectedVariant?.id == item.selectedVariant?.id && other.note == item.note).fold(0, (sum, other) => sum + other.quantity) + item.quantity)) {
-        throw StateError('Stok ${item.product.name} tidak mencukupi');
+      requestedByProduct.update(
+        item.product.id,
+        (quantity) => quantity + item.quantity,
+        ifAbsent: () => item.quantity,
+      );
+    }
+    for (final entry in requestedByProduct.entries) {
+      final product = products.firstWhere((p) => p.id == entry.key);
+      if (entry.value > product.stock) {
+        throw StateError('Stok ${product.name} tidak mencukupi');
       }
     }
     final String dateKey = '${DateTime.now().year}${DateTime.now().month.toString().padLeft(2, '0')}${DateTime.now().day.toString().padLeft(2, '0')}';
@@ -1063,7 +1072,7 @@ class PosState extends ChangeNotifier {
               t.status == TransactionStatus.completed &&
               _isSameCalendarDay(t.dateTime, now),
         )
-        .fold(0.0, (sum, t) => sum + (t.total - t.tax - t.serviceCharge - t.totalCost));
+        .fold(0.0, (sum, t) => sum + (t.total - t.tax - t.serviceCharge - t.items.fold(0.0, (cost, item) => cost + item.totalCost)));
   }
 
   int get completedTransactionsCount {
