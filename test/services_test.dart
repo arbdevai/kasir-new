@@ -299,8 +299,8 @@ void main() {
         },
       );
 
-      expect(
-        () => connection.connect(const PrinterEndpoint.network(host: '10.0.0.99')),
+      await expectLater(
+        connection.connect(const PrinterEndpoint.network(host: '10.0.0.99')),
         throwsA(isA<PrinterTimeoutException>()),
       );
       expect(connection.state, PrinterConnectionState.failed);
