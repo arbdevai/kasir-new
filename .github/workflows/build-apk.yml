@@ -52,8 +52,26 @@ jobs:
           flutter --version
           dart --version
 
+      # The repository keeps a small Android scaffold; Flutter supplies the
+      # generated Gradle wrapper and embedding files in CI.
+      - name: Complete Flutter platform scaffold
+        run: flutter create --no-pub --platforms=android .
+
       - name: Install dependencies
         run: flutter pub get
+
+      - name: Validate release signing inputs
+        if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.create_release == true)
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          test -n "$KEYSTORE_BASE64" || { echo "Missing KEYSTORE_BASE64 for signed release"; exit 1; }
+          test -n "$KEYSTORE_PASSWORD" || { echo "Missing KEYSTORE_PASSWORD for signed release"; exit 1; }
+          test -n "$KEY_ALIAS" || { echo "Missing KEY_ALIAS for signed release"; exit 1; }
+          test -n "$KEY_PASSWORD" || { echo "Missing KEY_PASSWORD for signed release"; exit 1; }
 
       - name: Configure Android signing keystore (if secrets are provided)
         shell: bash
