@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../src/backup.dart';
 import '../state/pos_state.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_widgets.dart';
@@ -54,9 +55,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text(profile.name, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+                                  Text(
+                                    profile.name,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+                                  ),
                                   const SizedBox(height: 2),
-                                  Text(profile.tagline, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                                  Text(
+                                    profile.tagline,
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                                  ),
                                 ],
                               ),
                             ),
@@ -83,8 +94,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         ),
                         SwitchListTile(
                           contentPadding: EdgeInsets.zero,
-                          title: Text(widget.state.selectedPrinterName, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
-                          subtitle: Text('Ukuran kertas: ${widget.state.selectedPaperSize}'),
+                          title: Text(widget.state.selectedPrinterName, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+                          subtitle: Text('Ukuran kertas: ${widget.state.selectedPaperSize}', maxLines: 1, overflow: TextOverflow.ellipsis),
                           value: widget.state.isPrinterConnected,
                           activeColor: AppColors.primary,
                           onChanged: (val) {
@@ -164,9 +175,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           title: const Text('Backup Database (.kasir)', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
                           subtitle: const Text('Cadangkan data penjualan, katalog & stok'),
                           trailing: const Icon(Icons.chevron_right_rounded),
-                          onTap: () {
+                          onTap: () async {
+                            final artifact = await VersionedJsonBackupService(widget.state).createBackup();
+                            if (!context.mounted) return;
                             ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('Backup terenkripsi berhasil dibuat di penyimpanan lokal')),
+                              SnackBar(content: Text('Backup ${artifact.fileName} berhasil dibuat (${artifact.bytes.length} byte)')),
                             );
                           },
                         ),

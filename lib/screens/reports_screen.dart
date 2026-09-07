@@ -70,15 +70,17 @@ class _ReportsScreenState extends State<ReportsScreen> {
         color: AppColors.surfaceSecondary,
         borderRadius: BorderRadius.circular(13),
       ),
-      child: Row(
-        children: labels.asMap().entries.map((e) {
-          final sel = e.key == _tabIndex;
-          return Expanded(
-            child: GestureDetector(
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: labels.asMap().entries.map((e) {
+            final sel = e.key == _tabIndex;
+            return GestureDetector(
               onTap: () => setState(() => _tabIndex = e.key),
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 150),
-                padding: const EdgeInsets.symmetric(vertical: 9),
+                constraints: const BoxConstraints(minWidth: 92),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
                 decoration: BoxDecoration(
                   color: sel ? AppColors.surface : Colors.transparent,
                   borderRadius: BorderRadius.circular(10),
@@ -89,6 +91,8 @@ class _ReportsScreenState extends State<ReportsScreen> {
                 child: Center(
                   child: Text(
                     e.value,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: sel ? FontWeight.w700 : FontWeight.w500,
@@ -97,9 +101,9 @@ class _ReportsScreenState extends State<ReportsScreen> {
                   ),
                 ),
               ),
-            ),
-          );
-        }).toList(),
+            );
+          }).toList(),
+        ),
       ),
     );
   }
@@ -187,9 +191,19 @@ class _ReportsScreenState extends State<ReportsScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+        Text(
+          label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+        ),
         const SizedBox(height: 4),
-        Text(val, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: color)),
+        Text(
+          val,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: color),
+        ),
       ],
     );
   }
@@ -335,11 +349,13 @@ class _ReportsScreenState extends State<ReportsScreen> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text('Ekspor Laporan Penjualan', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
         content: const Text('Pilih format laporan yang ingin disimpan atau dibagikan:'),
+        actionsOverflowDirection: VerticalDirection.down,
+        actionsOverflowButtonSpacing: 8,
         actions: [
           OutlinedButton.icon(
             onPressed: () {
               Navigator.pop(ctx);
-              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Laporan Excel (.xlsx) berhasil digenerate')));
+              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Laporan Excel (.xlsx) berhasil dibuat')));
             },
             icon: const Icon(Icons.table_chart_rounded),
             label: const Text('Excel (.xlsx)'),
@@ -347,7 +363,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
           ElevatedButton.icon(
             onPressed: () {
               Navigator.pop(ctx);
-              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Laporan PDF berhasil digenerate & siap dicetak')));
+              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Laporan PDF berhasil dibuat dan siap dicetak')));
             },
             icon: const Icon(Icons.picture_as_pdf_rounded),
             label: const Text('Dokumen PDF'),

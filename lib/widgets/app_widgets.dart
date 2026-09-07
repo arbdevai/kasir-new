@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../models/models.dart';
+import '../state/pos_state.dart';
 import '../theme/app_theme.dart';
 
 class GlassPanel extends StatelessWidget {
@@ -796,13 +797,181 @@ class AppNavigationItem {
   const AppNavigationItem({required this.label, required this.icon});
 }
 
+class AppNavigationLabels {
+  static const String dashboard = 'Dashboard';
+  static const String pos = 'Kasir';
+  static const String products = 'Produk';
+  static const String reports = 'Laporan';
+  static const String settings = 'Pengaturan';
+  static const String userSwitchTitle = 'Ganti Akun Kasir / Peran';
+  static const String exportReport = 'Ekspor Laporan';
+  static const String holdOrdersTitle = 'Daftar Pesanan Tertunda (Hold)';
+  static const String holdSavedMessage =
+      'Pesanan disimpan. Lihat di Laporan > Riwayat Transaksi (status Tertunda).';
+}
+
 const List<AppNavigationItem> appNavigationItems = [
-  AppNavigationItem(label: 'Dashboard', icon: Icons.space_dashboard_rounded),
-  AppNavigationItem(label: 'Kasir', icon: Icons.point_of_sale_rounded),
-  AppNavigationItem(label: 'Produk', icon: Icons.inventory_2_rounded),
-  AppNavigationItem(label: 'Laporan', icon: Icons.bar_chart_rounded),
-  AppNavigationItem(label: 'Pengaturan', icon: Icons.settings_rounded),
+  AppNavigationItem(label: AppNavigationLabels.dashboard, icon: Icons.space_dashboard_rounded),
+  AppNavigationItem(label: AppNavigationLabels.pos, icon: Icons.point_of_sale_rounded),
+  AppNavigationItem(label: AppNavigationLabels.products, icon: Icons.inventory_2_rounded),
+  AppNavigationItem(label: AppNavigationLabels.reports, icon: Icons.bar_chart_rounded),
+  AppNavigationItem(label: AppNavigationLabels.settings, icon: Icons.settings_rounded),
 ];
+
+class UserSwitchDialog extends StatefulWidget {
+  final PosState state;
+
+  const UserSwitchDialog({super.key, required this.state});
+
+  @override
+  State<UserSwitchDialog> createState() => _UserSwitchDialogState();
+}
+
+class _UserSwitchDialogState extends State<UserSwitchDialog> {
+  UserAccount? _selectedUser;
+  final TextEditingController _pinController = TextEditingController();
+  String? _errorText;
+
+  @override
+  void dispose() {
+    _pinController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      title: const Row(
+        children: [
+          Icon(Icons.badge_rounded, color: AppColors.primary),
+          SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              AppNavigationLabels.userSwitchTitle,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+            ),
+          ),
+        ],
+      ),
+      content: SizedBox(
+        width: 320,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ...widget.state.users.map((u) {
+                final isCurrent = u.id == widget.state.currentUser.id;
+                final selectable = u.isActive && !isCurrent;
+                return Opacity(
+                  opacity: u.isActive ? 1 : 0.45,
+                  child: ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    enabled: selectable,
+                    leading: CircleAvatar(
+                      backgroundColor: isCurrent ? AppColors.primary : AppColors.surfaceSecondary,
+                      child: Text(
+                        u.name.substring(0, 1),
+                        style: TextStyle(
+                          color: isCurrent ? Colors.white : AppColors.textPrimary,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                    title: Text(
+                      u.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+                    ),
+                    subtitle: Text(
+                      u.isActive ? u.roleTitle : '${u.roleTitle} • Nonaktif',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    trailing: isCurrent
+                        ? const Icon(Icons.check_circle_rounded, color: AppColors.primary)
+                        : const Icon(Icons.chevron_right_rounded),
+                    onTap: selectable
+                        ? () {
+                            setState(() {
+                              _selectedUser = u;
+                              _pinController.clear();
+                              _errorText = null;
+                            });
+                          }
+                        : null,
+                  ),
+                );
+              }),
+              if (_selectedUser != null) ...[
+                const Divider(height: 20),
+                Text(
+                  'Masukkan PIN untuk ${_selectedUser!.name}',
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 10),
+                TextField(
+                  controller: _pinController,
+                  autofocus: true,
+                  obscureText: true,
+                  obscuringCharacter: '•',
+                  maxLength: 6,
+                  keyboardType: TextInputType.number,
+                  onChanged: (_) {
+                    if (_errorText != null) {
+                      setState(() => _errorText = null);
+                    }
+                  },
+                  decoration: InputDecoration(
+                    labelText: 'PIN 4–6 digit',
+                    counterText: '',
+                    errorText: _errorText,
+                    prefixIcon: const Icon(Icons.lock_outline_rounded),
+                  ),
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Batal'),
+        ),
+        if (_selectedUser != null)
+          ElevatedButton(
+            onPressed: _submit,
+            child: Text('Masuk sebagai ${_selectedUser!.name.split(' ').first}'),
+          ),
+      ],
+    );
+  }
+
+  void _submit() {
+    final target = _selectedUser;
+    if (target == null) return;
+    final pin = _pinController.text.trim();
+    if (pin.length < 4 || pin.length > 6 || int.tryParse(pin) == null) {
+      setState(() => _errorText = 'PIN harus 4–6 digit angka');
+      return;
+    }
+    final ok = widget.state.switchUser(target.id, pin);
+    if (!ok) {
+      setState(() => _errorText = 'PIN salah atau akun nonaktif');
+      return;
+    }
+    Navigator.pop(context);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Beralih ke akun ${target.name} (${target.roleTitle})')),
+    );
+  }
+}
 
 String paymentMethodLabel(PaymentMethod method) {
   switch (method) {

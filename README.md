@@ -1,6 +1,6 @@
 # Kasir New
 
-Base Flutter shell for **Kasir New**, an offline-first point-of-sale application for Android phones and tablets. The current build establishes the project foundation, visual language, responsive navigation, and route boundaries described in `PRD.md`; feature modules will be implemented incrementally.
+Offline-first point-of-sale application for Android phones and tablets. The active build provides a responsive dashboard, POS catalog and cart, inventory, reports, settings, and shift workflows.
 
 ## Requirements
 
@@ -26,17 +26,19 @@ flutter run -d <device-id>
 
 ## Project structure
 
-- `lib/main.dart` — application entry point and Riverpod scope.
-- `lib/src/app/` — app widget and `go_router` navigation configuration.
-- `lib/src/features/` — feature-owned presentation shells for POS, history, products, reports, and settings.
-- `lib/src/theme/` — shared orange-accent design tokens and Material 3 theme.
+- `lib/main.dart` — application entry point and stable `MaterialApp`.
+- `lib/screens/` — active dashboard, POS, products, reports, settings, and navigation shell screens.
+- `lib/state/pos_state.dart` — observable in-memory POS state and business operations.
+- `lib/models/models.dart` — active UI/domain models.
+- `lib/theme/` and `lib/widgets/` — shared Material 3 theme, design tokens, and reusable widgets.
+- `lib/src/domain/` and `lib/kasir_services.dart` — service contracts and independently tested domain/service models.
 - `assets/images/` and `assets/icons/` — reserved for product imagery, QRIS, and branding assets.
 - `.github/workflows/build-apk.yml` — stable Flutter CI workflow that analyzes, tests, and builds debug/release APKs.
 
 ## Navigation shell
 
-Phone layouts use a bottom navigation bar. Tablet layouts (768 logical pixels and wider) use a navigation rail and expanded content area. Routes are named and isolated in `lib/src/app/app_router.dart` so each feature can add nested routes without changing the app entry point.
+Phone layouts use a bottom navigation bar. Tablet layouts (780 logical pixels and wider) use a responsive sidebar with indexed view switching to maintain ephemeral state. Feature modules map cleanly to `lib/screens/` and `lib/state/pos_state.dart`.
 
 ## Adding features
 
-Keep domain, data, and presentation code within the owning `lib/src/features/<feature>/` directory. Add dependencies only when needed, then run `flutter pub get`, `flutter analyze`, and `flutter test` before opening a pull request. Database, printer, and backup integrations should remain behind feature/data abstractions so the shell stays usable offline.
+Keep feature screens and widgets within `lib/screens/` and `lib/widgets/`. Shared domain and backend service models reside in `lib/models/` and `lib/src/domain/`. Add dependencies only when needed, then run `flutter pub get`, `flutter analyze`, and `flutter test` before opening a pull request. Database, printer, and backup integrations should remain behind feature/data abstractions so the shell stays usable offline.

@@ -10,8 +10,14 @@ import '../widgets/app_widgets.dart';
 class DashboardScreen extends StatelessWidget {
   final PosState state;
   final ValueChanged<int> onNavigateToTab;
+  final VoidCallback? onRequestUserSwitch;
 
-  const DashboardScreen({super.key, required this.state, required this.onNavigateToTab});
+  const DashboardScreen({
+    super.key,
+    required this.state,
+    required this.onNavigateToTab,
+    this.onRequestUserSwitch,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -70,7 +76,11 @@ class DashboardScreen extends StatelessWidget {
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
             onSelected: (value) {
               if (value == 'switch') {
-                _showUserSwitchDialog(context);
+                if (onRequestUserSwitch != null) {
+                  onRequestUserSwitch!();
+                } else {
+                  _showUserSwitchDialog(context);
+                }
               } else if (value == 'settings') {
                 onNavigateToTab(4);
               }
@@ -562,27 +572,7 @@ class DashboardScreen extends StatelessWidget {
   void _showUserSwitchDialog(BuildContext context) {
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: const Text('Ganti Akun', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: state.users.map((user) {
-            final active = user.id == state.currentUser.id;
-            return ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: CircleAvatar(backgroundColor: active ? AppColors.primary : AppColors.surfaceSecondary, child: Text(user.name.substring(0, 1), style: TextStyle(color: active ? Colors.white : AppColors.textPrimary))),
-              title: Text(user.name, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
-              subtitle: Text(user.roleTitle),
-              trailing: active ? const Icon(Icons.check_circle_rounded, color: AppColors.primary) : const Icon(Icons.chevron_right_rounded),
-              onTap: () {
-                state.switchUser(user.id, user.pin);
-                Navigator.pop(ctx);
-              },
-            );
-          }).toList(),
-        ),
-      ),
+      builder: (ctx) => UserSwitchDialog(state: state),
     );
   }
 }

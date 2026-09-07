@@ -20,6 +20,23 @@ class AppShell extends StatefulWidget {
 
 class _AppShellState extends State<AppShell> {
   int _currentIndex = 0;
+  late final List<Widget> _screens;
+
+  @override
+  void initState() {
+    super.initState();
+    _screens = [
+      DashboardScreen(
+        state: widget.state,
+        onNavigateToTab: _navigateToTab,
+        onRequestUserSwitch: _showUserSwitchDialog,
+      ),
+      PosScreen(state: widget.state),
+      ProductsScreen(state: widget.state),
+      ReportsScreen(state: widget.state),
+      SettingsScreen(state: widget.state),
+    ];
+  }
 
   void _navigateToTab(int index) {
     setState(() {
@@ -29,30 +46,35 @@ class _AppShellState extends State<AppShell> {
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final bool isTablet = constraints.maxWidth >= 780;
-        final screens = [
-          DashboardScreen(state: widget.state, onNavigateToTab: _navigateToTab),
-          PosScreen(state: widget.state),
-          ProductsScreen(state: widget.state),
-          ReportsScreen(state: widget.state),
-          SettingsScreen(state: widget.state),
-        ];
-
+    return ListenableBuilder(
+      listenable: widget.state,
+      builder: (context, _) => LayoutBuilder(
+        builder: (context, constraints) {
+          final bool isTablet = constraints.maxWidth >= 780;
         return Scaffold(
           body: isTablet
               ? Row(
                   children: [
                     _buildTabletSidebar(context),
                     const VerticalDivider(width: 1, thickness: 1, color: AppColors.border),
-                    Expanded(child: screens[_currentIndex]),
+                    Expanded(
+                      child: IndexedStack(
+                        index: _currentIndex,
+                        children: _screens,
+                      ),
+                    ),
                   ],
                 )
-              : SafeArea(child: screens[_currentIndex]),
+              : SafeArea(
+                  child: IndexedStack(
+                    index: _currentIndex,
+                    children: _screens,
+                  ),
+                ),
           bottomNavigationBar: isTablet ? null : _buildMobileBottomBar(context),
         );
-      },
+        },
+      ),
     );
   }
 
@@ -150,7 +172,7 @@ class _AppShellState extends State<AppShell> {
                 _buildSidebarItem(
                   index: 1,
                   icon: Icons.point_of_sale_rounded,
-                  label: 'Kasir / POS',
+                  label: 'Kasir',
                   badgeCount: widget.state.cartTotalQuantity > 0
                       ? widget.state.cartTotalQuantity
                       : (holdCount > 0 ? holdCount : null),
@@ -159,14 +181,14 @@ class _AppShellState extends State<AppShell> {
                 _buildSidebarItem(
                   index: 2,
                   icon: Icons.inventory_2_rounded,
-                  label: 'Produk & Stok',
+                  label: 'Produk',
                   badgeCount: lowStockCount > 0 ? lowStockCount : null,
                   badgeColor: AppColors.danger,
                 ),
                 _buildSidebarItem(
                   index: 3,
                   icon: Icons.bar_chart_rounded,
-                  label: 'Laporan & Shift',
+                  label: 'Laporan',
                 ),
                 _buildSidebarItem(
                   index: 4,
@@ -414,52 +436,7 @@ class _AppShellState extends State<AppShell> {
   void _showUserSwitchDialog(BuildContext context) {
     showDialog(
       context: context,
-      builder: (ctx) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          title: const Row(
-            children: [
-              Icon(Icons.badge_rounded, color: AppColors.primary),
-              SizedBox(width: 8),
-              Text('Ganti Akun Kasir / Role', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
-            ],
-          ),
-          content: SizedBox(
-            width: 320,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: widget.state.users.map((u) {
-                final isCurrent = u.id == widget.state.currentUser.id;
-                return ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: CircleAvatar(
-                    backgroundColor: isCurrent ? AppColors.primary : AppColors.surfaceSecondary,
-                    child: Text(
-                      u.name.substring(0, 1),
-                      style: TextStyle(
-                        color: isCurrent ? Colors.white : AppColors.textPrimary,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-                  title: Text(u.name, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
-                  subtitle: Text('${u.roleTitle} • PIN: ${u.pin}'),
-                  trailing: isCurrent
-                      ? const Icon(Icons.check_circle_rounded, color: AppColors.primary)
-                      : const Icon(Icons.chevron_right_rounded),
-                  onTap: () {
-                    widget.state.switchUser(u.id, u.pin);
-                    Navigator.pop(ctx);
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Beralih ke akun ${u.name} (${u.roleTitle})')),
-                    );
-                  },
-                );
-              }).toList(),
-            ),
-          ),
-        );
-      },
+      builder: (ctx) => UserSwitchDialog(state: widget.state),
     );
   }
 
