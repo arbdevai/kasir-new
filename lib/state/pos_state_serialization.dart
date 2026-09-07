@@ -54,7 +54,7 @@ extension PosStateSerialization on PosState {
     selectedPrinterName = decoded.selectedPrinterName;
     selectedPaperSize = decoded.selectedPaperSize;
     isPrinterConnected = decoded.isPrinterConnected;
-    notifyListeners();
+    emitStateChanged();
   }
 }
 

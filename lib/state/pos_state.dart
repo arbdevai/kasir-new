@@ -1095,6 +1095,8 @@ class PosState extends ChangeNotifier {
   }
 
   // --- Settings & Profile ---
+  void emitStateChanged() => notifyListeners();
+
   void updateStoreProfile(StoreProfile newProfile) {
     storeProfile = newProfile;
     final repo = settingsRepository;
