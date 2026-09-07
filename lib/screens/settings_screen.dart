@@ -55,9 +55,19 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text(profile.name, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
+                                  Text(
+                                    profile.name,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+                                  ),
                                   const SizedBox(height: 2),
-                                  Text(profile.tagline, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                                  Text(
+                                    profile.tagline,
+                                    maxLines: 2,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                                  ),
                                 ],
                               ),
                             ),

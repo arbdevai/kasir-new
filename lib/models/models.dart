@@ -716,7 +716,7 @@ class UserAccount {
   String get roleTitle {
     switch (role) {
       case UserRole.owner:
-        return 'Owner / Admin';
+        return 'Owner / Super Admin';
       case UserRole.manager:
         return 'Manager Toko';
       case UserRole.cashier:

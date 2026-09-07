@@ -49,14 +49,11 @@ class _KasirAppState extends State<KasirApp> {
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: posState,
-      builder: (context, _) => MaterialApp(
-        debugShowCheckedModeBanner: false,
-        title: 'Kasir',
-        theme: AppTheme.light(),
-        home: AppShell(state: posState),
-      ),
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      title: 'Kasir',
+      theme: AppTheme.light(),
+      home: AppShell(state: posState),
     );
   }
 }

@@ -523,7 +523,7 @@ class PosState extends ChangeNotifier {
     return PosState(
       storeProfile: profile,
       users: userAccounts,
-      currentUser: userAccounts.first,
+      currentUser: userAccounts[2],
       categories: cats,
       products: prods,
       cart: [],
@@ -736,8 +736,8 @@ class PosState extends ChangeNotifier {
   }
 
   // --- Hold & Recall Orders ---
-  void holdCurrentOrder({String? customerName, String? tableNumber, String? note}) {
-    if (cart.isEmpty) return;
+  bool holdCurrentOrder({String? customerName, String? tableNumber, String? note}) {
+    if (cart.isEmpty) return false;
 
     final String inv = 'HOLD/${DateTime.now().year}${DateTime.now().month.toString().padLeft(2, '0')}${DateTime.now().day.toString().padLeft(2, '0')}/${(transactions.where((t) => t.status == TransactionStatus.hold).length + 1).toString().padLeft(3, '0')}';
 
@@ -761,10 +761,11 @@ class PosState extends ChangeNotifier {
 
     transactions.insert(0, tx);
     clearCart();
-    notifyListeners();
+    return true;
   }
 
-  void recallHoldOrder(Transaction tx) {
+  bool recallHoldOrder(Transaction tx) {
+    if (tx.status != TransactionStatus.hold) return false;
     cart = List.from(tx.items.map((i) => i.copyWith()));
     activeCustomerName = tx.customerName;
     activeTableNumber = tx.tableNumber;
@@ -775,6 +776,7 @@ class PosState extends ChangeNotifier {
     // Remove from hold list
     transactions.removeWhere((t) => t.id == tx.id);
     notifyListeners();
+    return true;
   }
 
   // --- Checkout Transaction ---
@@ -886,14 +888,18 @@ class PosState extends ChangeNotifier {
 
   // --- Transaction Actions: Void & Refund ---
   bool voidTransaction(String transactionId, {required String adminPin, required String reason}) {
-    // Verify admin PIN
-    final bool isAuthorized = users.any(
-      (u) =>
+    // Verify admin PIN on active owner/manager account
+    UserAccount? authorizedAdmin;
+    for (final u in users) {
+      if (u.isActive &&
           (u.role == UserRole.owner || u.role == UserRole.manager) &&
-          u.pin == adminPin,
-    );
+          u.pin == adminPin) {
+        authorizedAdmin = u;
+        break;
+      }
+    }
 
-    if (!isAuthorized) return false;
+    if (authorizedAdmin == null) return false;
 
     final int index = transactions.indexWhere((t) => t.id == transactionId);
     if (index >= 0) {
@@ -903,7 +909,7 @@ class PosState extends ChangeNotifier {
       }
       transactions[index] = oldTx.copyWith(
         status: TransactionStatus.voided,
-        notes: '${oldTx.notes} [VOID: $reason by PIN Auth]',
+        notes: '${oldTx.notes} [VOID: $reason by Admin ${authorizedAdmin.name} (${authorizedAdmin.roleTitle})]',
       );
 
       // Restore stock
@@ -1074,16 +1080,18 @@ class PosState extends ChangeNotifier {
 
   // --- Authentication / User Switching ---
   bool switchUser(String userId, String pin) {
-    final user = users.firstWhere(
-      (u) => u.id == userId && u.pin == pin && u.isActive,
-      orElse: () => const UserAccount(id: '', name: '', role: UserRole.cashier, pin: ''),
-    );
-    if (user.id.isNotEmpty) {
-      currentUser = user;
-      notifyListeners();
-      return true;
+    final matches = users.where((u) => u.id == userId && u.isActive);
+    if (matches.isEmpty) return false;
+    final user = matches.first;
+    if (pin.length < 4 || pin.length > 6 || !RegExp(r'^\d{4,6}$').hasMatch(pin) || user.pin != pin) {
+      return false;
     }
-    return false;
+    if (user.id == currentUser.id) return true;
+    // Do not silently hand an open shift to another cashier.
+    if (currentShift != null && currentShift!.cashierName != user.name) return false;
+    currentUser = user;
+    notifyListeners();
+    return true;
   }
 
   // --- Settings & Profile ---

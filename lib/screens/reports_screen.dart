@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 
 import '../models/models.dart';
-import '../src/report_export.dart';
 import '../state/pos_state.dart';
 import '../theme/app_theme.dart';
 import '../widgets/app_widgets.dart';
@@ -30,11 +29,7 @@ class _ReportsScreenState extends State<ReportsScreen> {
               pinned: true,
               toolbarHeight: 64,
               titleSpacing: 20,
-              title: const FittedBox(
-                fit: BoxFit.scaleDown,
-                alignment: Alignment.centerLeft,
-                child: Text('Laporan & Keuangan', style: TextStyle(fontSize: 19, fontWeight: FontWeight.w800)),
-              ),
+              title: const Text('Laporan & Keuangan', style: TextStyle(fontSize: 19, fontWeight: FontWeight.w800)),
               actions: [
                 IconButton(
                   tooltip: 'Export Laporan',
@@ -75,15 +70,17 @@ class _ReportsScreenState extends State<ReportsScreen> {
         color: AppColors.surfaceSecondary,
         borderRadius: BorderRadius.circular(13),
       ),
-      child: Row(
-        children: labels.asMap().entries.map((e) {
-          final sel = e.key == _tabIndex;
-          return Expanded(
-            child: GestureDetector(
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: labels.asMap().entries.map((e) {
+            final sel = e.key == _tabIndex;
+            return GestureDetector(
               onTap: () => setState(() => _tabIndex = e.key),
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 150),
-                padding: const EdgeInsets.symmetric(vertical: 9),
+                constraints: const BoxConstraints(minWidth: 92),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
                 decoration: BoxDecoration(
                   color: sel ? AppColors.surface : Colors.transparent,
                   borderRadius: BorderRadius.circular(10),
@@ -92,26 +89,21 @@ class _ReportsScreenState extends State<ReportsScreen> {
                       : null,
                 ),
                 child: Center(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 6),
-                    child: Text(
-                      e.value,
-                      textAlign: TextAlign.center,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      softWrap: false,
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: sel ? FontWeight.w700 : FontWeight.w500,
-                        color: sel ? AppColors.textPrimary : AppColors.textSecondary,
-                      ),
+                  child: Text(
+                    e.value,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: sel ? FontWeight.w700 : FontWeight.w500,
+                      color: sel ? AppColors.textPrimary : AppColors.textSecondary,
                     ),
                   ),
                 ),
               ),
-            ),
-          );
-        }).toList(),
+            );
+          }).toList(),
+        ),
       ),
     );
   }
@@ -199,9 +191,19 @@ class _ReportsScreenState extends State<ReportsScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+        Text(
+          label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+        ),
         const SizedBox(height: 4),
-        Text(val, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: color)),
+        Text(
+          val,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: color),
+        ),
       ],
     );
   }
@@ -341,31 +343,30 @@ class _ReportsScreenState extends State<ReportsScreen> {
   }
 
   void _showExportDialog(BuildContext context) {
-    final exporter = const ReportExportService();
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: const Text('Ekspor Laporan Penjualan', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800)),
-        content: Text('Ekspor ${widget.state.transactions.length} transaksi yang saat ini tersimpan.'),
+        content: const Text('Pilih format laporan yang ingin disimpan atau dibagikan:'),
+        actionsOverflowDirection: VerticalDirection.down,
+        actionsOverflowButtonSpacing: 8,
         actions: [
           OutlinedButton.icon(
             onPressed: () {
-              final artifact = exporter.exportCsv(widget.state.transactions);
               Navigator.pop(ctx);
-              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Laporan CSV ${artifact.fileName} berhasil dibuat (${artifact.bytes.length} byte)')));
+              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Laporan Excel (.xlsx) berhasil dibuat')));
             },
             icon: const Icon(Icons.table_chart_rounded),
-            label: const Text('CSV / Excel'),
+            label: const Text('Excel (.xlsx)'),
           ),
           ElevatedButton.icon(
             onPressed: () {
-              final artifact = exporter.exportText(widget.state.transactions);
               Navigator.pop(ctx);
-              ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Laporan teks ${artifact.fileName} berhasil dibuat (${artifact.bytes.length} byte)')));
+              ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Laporan PDF berhasil dibuat dan siap dicetak')));
             },
-            icon: const Icon(Icons.description_rounded),
-            label: const Text('Dokumen Teks'),
+            icon: const Icon(Icons.picture_as_pdf_rounded),
+            label: const Text('Dokumen PDF'),
           ),
         ],
       ),

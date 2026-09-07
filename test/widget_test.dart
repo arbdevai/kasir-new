@@ -7,6 +7,6 @@ void main() {
     await tester.pumpWidget(const KasirApp());
     await tester.pumpAndSettle();
 
-    expect(find.text('Kasir / POS'), findsWidgets);
+    expect(find.text('Kasir'), findsWidgets);
   });
 }

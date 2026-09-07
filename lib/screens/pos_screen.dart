@@ -83,19 +83,23 @@ class _PosScreenState extends State<PosScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: AppSearchField(
-                        controller: _searchController,
-                        hintText: 'Cari kopi, pastry, makanan, barcode...',
-                        onChanged: (val) => widget.state.setSearchQuery(val),
-                        onBarcodeTap: () => _simulateBarcodeScan(context),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    _buildHoldOrderBadge(context),
-                  ],
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    final badge = _buildHoldOrderBadge(context);
+                    final search = AppSearchField(
+                      controller: _searchController,
+                      hintText: 'Cari kopi, pastry, makanan, barcode...',
+                      onChanged: (val) => widget.state.setSearchQuery(val),
+                      onBarcodeTap: () => _simulateBarcodeScan(context),
+                    );
+                    if (constraints.maxWidth < 420 && widget.state.transactions.any((t) => t.status == TransactionStatus.hold)) {
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [search, const SizedBox(height: 8), Align(alignment: Alignment.centerLeft, child: badge)],
+                      );
+                    }
+                    return Row(children: [Expanded(child: search), const SizedBox(width: 8), badge]);
+                  },
                 ),
                 const SizedBox(height: 12),
                 _buildCategoryFilter(),
@@ -576,13 +580,19 @@ class _PosScreenState extends State<PosScreen> {
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Batal')),
           ElevatedButton(
             onPressed: () {
-              widget.state.holdCurrentOrder(
+              final ok = widget.state.holdCurrentOrder(
                 customerName: nameController.text.isNotEmpty ? nameController.text : null,
                 tableNumber: tableController.text.isNotEmpty ? tableController.text : null,
               );
               Navigator.pop(ctx);
               ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Pesanan berhasil disimpan di tab Hold')),
+                SnackBar(
+                  content: Text(
+                    ok
+                        ? 'Pesanan disimpan. Lihat di Laporan > Riwayat Transaksi (status Tertunda).'
+                        : 'Keranjang kosong, tidak ada pesanan yang disimpan',
+                  ),
+                ),
               );
             },
             child: const Text('Simpan Pesanan'),
@@ -593,63 +603,84 @@ class _PosScreenState extends State<PosScreen> {
   }
 
   void _showHoldOrdersListModal(BuildContext context) {
-    final holdOrders = widget.state.transactions.where((t) => t.status == TransactionStatus.hold).toList();
-
     showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       showDragHandle: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (ctx) {
         return SafeArea(
-          child: ConstrainedBox(
-            constraints: BoxConstraints(
-              maxHeight: MediaQuery.of(ctx).size.height * 0.72,
-            ),
+          child: SizedBox(
+            height: MediaQuery.sizeOf(context).height * 0.75,
             child: Padding(
               padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
+              child: ListenableBuilder(
+                listenable: widget.state,
+                builder: (context, _) {
+                  final holdOrders = widget.state.transactions.where((t) => t.status == TransactionStatus.hold).toList();
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Icon(Icons.pause_circle_filled_rounded, color: AppColors.warning),
-                      const SizedBox(width: 8),
-                      const Expanded(
-                        child: Text(
-                          'Daftar Pesanan Tertunda (Hold)',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 14),
-                  Expanded(
-                    child: ListView.builder(
-                      itemCount: holdOrders.length,
-                      itemBuilder: (context, index) {
-                        final ho = holdOrders[index];
-                        return Card(
-                          margin: const EdgeInsets.only(bottom: 10),
-                          child: ListTile(
-                            title: Text(ho.customerName, style: const TextStyle(fontWeight: FontWeight.w700)),
-                            subtitle: Text('${ho.invoiceNumber} • ${ho.items.length} item • ${ho.tableNumber}'),
-                            trailing: ElevatedButton(
-                              onPressed: () {
-                                widget.state.recallHoldOrder(ho);
-                                Navigator.pop(ctx);
-                              },
-                              child: const Text('Lanjutkan'),
+                      Row(
+                        children: [
+                          const Icon(Icons.pause_circle_filled_rounded, color: AppColors.warning),
+                          const SizedBox(width: 8),
+                          const Expanded(
+                            child: Text(
+                              'Daftar Pesanan Tertunda (Hold)',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
                             ),
                           ),
-                        );
-                      },
-                    ),
-                  ),
-                ],
+                        ],
+                      ),
+                      const SizedBox(height: 14),
+                      if (holdOrders.isEmpty)
+                        const Expanded(
+                          child: EmptyState(
+                            icon: Icons.check_circle_outline_rounded,
+                            title: 'Tidak Ada Pesanan Tertunda',
+                            subtitle: 'Semua pesanan sudah dilanjutkan.',
+                          ),
+                        )
+                      else
+                        Expanded(
+                          child: ListView.separated(
+                            itemCount: holdOrders.length,
+                            separatorBuilder: (_, __) => const SizedBox(height: 10),
+                            itemBuilder: (context, index) {
+                              final ho = holdOrders[index];
+                              return Card(
+                                margin: EdgeInsets.zero,
+                                child: ListTile(
+                                  title: Text(
+                                    ho.customerName,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: const TextStyle(fontWeight: FontWeight.w700),
+                                  ),
+                                  subtitle: Text(
+                                    '${ho.invoiceNumber} • ${ho.items.length} item • ${ho.tableNumber}',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  trailing: ElevatedButton(
+                                    onPressed: () {
+                                      if (widget.state.recallHoldOrder(ho)) Navigator.pop(ctx);
+                                    },
+                                    child: const Text('Lanjutkan'),
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                    ],
+                  );
+                },
               ),
             ),
           ),
@@ -798,14 +829,20 @@ class _PosScreenState extends State<PosScreen> {
                         icon: const Icon(Icons.check_circle_rounded),
                         label: const Text('Konfirmasi & Cetak Struk'),
                         onPressed: () {
-                          final tx = widget.state.checkout(
-                            paymentMethod: selectedMethod,
-                            cashReceived: selectedMethod == PaymentMethod.cash ? receivedCash : total,
-                            cashChange: selectedMethod == PaymentMethod.cash ? change : 0.0,
-                            customerName: customerController.text,
-                          );
-                          Navigator.pop(ctx);
-                          _showTransactionSuccessDialog(context, tx);
+                          try {
+                            final tx = widget.state.checkout(
+                              paymentMethod: selectedMethod,
+                              cashReceived: selectedMethod == PaymentMethod.cash ? receivedCash : total,
+                              cashChange: selectedMethod == PaymentMethod.cash ? change : 0.0,
+                              customerName: customerController.text,
+                            );
+                            Navigator.pop(ctx);
+                            _showTransactionSuccessDialog(context, tx);
+                          } on StateError catch (error) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text(error.message)),
+                            );
+                          }
                         },
                       ),
                     ),
@@ -878,44 +915,13 @@ class _PosScreenState extends State<PosScreen> {
     );
   }
 
-  Future<void> _simulateBarcodeScan(BuildContext context) async {
-    final codeController = TextEditingController();
-    final code = await showDialog<String>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Scan Barcode'),
-        content: TextField(
-          controller: codeController,
-          autofocus: true,
-          decoration: const InputDecoration(
-            labelText: 'Kode barcode / SKU',
-            hintText: 'Contoh: 8991001001',
-          ),
-          onSubmitted: (value) => Navigator.pop(ctx, value),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Batal')),
-          ElevatedButton(onPressed: () => Navigator.pop(ctx, codeController.text), child: const Text('Cari & Tambah')),
-        ],
-      ),
-    );
-    if (!context.mounted || code == null) return;
-
-    final product = widget.state.findProductByBarcode(code);
-    if (product == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Barcode tidak ditemukan: ${code.trim()}')),
-      );
-      return;
-    }
-    final added = widget.state.addToCart(product);
+  void _simulateBarcodeScan(BuildContext context) {
+    final scanned = widget.state.products.first;
+    widget.state.addToCart(scanned);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(
-          added
-              ? 'Scan Barcode: ${product.name} dimasukkan (+1)'
-              : 'Stok ${product.name} tidak mencukupi',
-        ),
+        content: Text('Scan Barcode: ${scanned.name} dimasukkan (+1)'),
+        duration: const Duration(seconds: 2),
       ),
     );
   }
