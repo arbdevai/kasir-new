@@ -1,6 +1,6 @@
 import 'dart:typed_data';
 
-import 'package:kasir_services/kasir_services.dart';
+import 'package:kasir_new/kasir_services.dart';
 import 'package:test/test.dart';
 
 void main() {
